@@ -12,5 +12,4 @@ fs_permissions = [{ access = "read", path = "out" }]
 arbitrum = "${ARBITRUM_RPC_URL}"
 base = "${BASE_RPC_URL}"
 
-[etherscan]
-arbitrum = { key = "${ETHERSCAN_API_KEY}", chain = 42161 }
+# Verification uses Sourcify (no API key): forge script ... --verify --verifier sourcify

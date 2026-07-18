@@ -14,7 +14,7 @@
 - Foundry `solc >= 0.8.30` (Lattice sources are `pragma solidity ^0.8.30`); `ffi = true` (needed by the string-cut path for `AaveV3Adapter`, which has no `exportSelectors()`).
 - Particle UA is **mainnet-only**; 7702 mode requires the Privy embedded wallet. Demo funds live on **Base**; contracts on **Arbitrum One (42161)**.
 - Budget ceiling **$10–25 total** (≈$15 USDC demo funds + gas). Rehearsals recycle the same USDC via round trips.
-- Every mainnet `forge script --broadcast` includes `--verify` (re-run with `--resume --verify` if verification is missed — never redeploy).
+- Every mainnet `forge script --broadcast` includes `--verify --verifier sourcify` (Sourcify: no API key; re-run with `--resume --verify --verifier sourcify` if verification is missed — never redeploy). Verification evidence links use `https://repo.sourcify.dev/contracts/full_match/42161/<address>/` (Arbiscan's own green check is Etherscan-family and will NOT reflect Sourcify).
 - All commits GPG-signed (run git with sandbox disabled). Conventional Commit messages.
 - No chain names in the primary UI flow. No `ponytail:` comments in code.
 - Deployer key via Foundry keystore `--account` flag — never a raw private key in env or shell history.
@@ -71,8 +71,7 @@ fs_permissions = [{ access = "read", path = "out" }]
 arbitrum = "${ARBITRUM_RPC_URL}"
 base = "${BASE_RPC_URL}"
 
-[etherscan]
-arbitrum = { key = "${ETHERSCAN_API_KEY}", chain = 42161 }
+# Verification uses Sourcify (no API key): forge script ... --verify --verifier sourcify
 ```
 
 - [ ] **Step 3: Write `remappings.txt`**
@@ -88,9 +87,9 @@ forge-std/=lib/forge-std/src/
 - [ ] **Step 4: Write `.env.example`** (and `.gitignore`: `out/`, `cache/`, `.env`, `app/node_modules/`, `app/.next/`, `app/.env*.local`, `broadcast/**/dry-run/`)
 
 ```bash
-ARBITRUM_RPC_URL="https://arb1.arbitrum.io/rpc"
+ARBITRUM_RPC_URL="https://arbitrum-one.public.blastapi.io"   # archive-capable; serves fork test too
 BASE_RPC_URL="https://mainnet.base.org"
-ETHERSCAN_API_KEY=""            # Etherscan v2 key, works for Arbiscan
+KEYSTORE_ACCOUNT=""             # Foundry keystore name (cast wallet list) — never a raw key
 ```
 
 - [ ] **Step 5: Write the smoke test `test/Smoke.t.sol`** — proves the install + remappings compile and lattice facets construct:
@@ -440,9 +439,9 @@ NOTE for implementer on step 5's recall math: after the partial redeem, `totalAs
 - Consumes: `DeployEveryield.run(admin)`.
 - Produces: live `VAULT` / `MANAGER` / `ADAPTER` addresses consumed by Task 6's `app/lib/addresses.ts` and Task 8's Makefile.
 
-- [ ] **Step 1 (USER):** confirm deployer — Foundry keystore account name (`cast wallet list`), it needs ~$3–5 ETH on Arbitrum One; export `ARBITRUM_RPC_URL` + `ETHERSCAN_API_KEY` in `.env`.
+- [ ] **Step 1 (USER):** confirm deployer — Foundry keystore account name (`cast wallet list`), it needs ~$3–5 ETH on Arbitrum One; set `ARBITRUM_RPC_URL` + `KEYSTORE_ACCOUNT` in `.env` (no verifier API key — Sourcify).
 - [ ] **Step 2: Dry run**: `source .env && forge script script/DeployEveryield.s.sol --sig "run(address)" <DEPLOYER_ADDR> --rpc-url arbitrum --account <KEYSTORE_NAME> --sender <DEPLOYER_ADDR>` → simulation succeeds, returns three addresses.
-- [ ] **Step 3: Broadcast + verify**: same command + `--broadcast --verify`. Expected: all facet + diamond contracts verified on Arbiscan. If verification lags: re-run identical command with `--resume --verify`.
+- [ ] **Step 3: Broadcast + verify**: same command + `--broadcast --verify --verifier sourcify`. Expected: all facet + diamond contracts get Sourcify full/partial matches (links: `https://repo.sourcify.dev/contracts/full_match/42161/<address>/`). If verification lags: re-run identical command with `--resume --verify --verifier sourcify`.
 - [ ] **Step 4: Smoke-check the wiring on-chain**:
 
 ```bash
