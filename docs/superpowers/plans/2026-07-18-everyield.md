@@ -515,10 +515,14 @@ export const vaultAbi = new Interface([
   "function deposit(uint256 assets, address receiver) returns (uint256)",
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256)",
   "function balanceOf(address) view returns (uint256)",
-  "function convertToAssets(uint256 shares) view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
   "function idleAssets() view returns (uint256)",
   "function totalAssets() view returns (uint256)",
 ]);
+// PRICING RULE (fork-test finding, reviewer-confirmed): NEVER price positions via
+// convertToAssets/previewRedeem — those selectors bind library-internally to idle-only
+// totalAssets. Only the external totalAssets() reports full NAV. Position value is
+// shares * totalAssets() / totalSupply().
 const providerAbi = new Interface(["function getPool() view returns (address)"]);
 const poolAbi = new Interface([
   "function getReserveData(address) view returns ((uint256,uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128))",
@@ -555,9 +559,16 @@ export async function createWithdrawTx(ua: UniversalAccount, shares: bigint, own
 
 export async function readPosition(owner: string) {
   const vault = new Contract(VAULT, vaultAbi, rpc);
-  const [shares, idleAssets] = await Promise.all([vault.balanceOf(owner), vault.idleAssets()]);
-  const usdcValue: bigint = shares === 0n ? 0n : await vault.convertToAssets(shares);
-  return { shares, usdcValue, idleAssets, display: formatUnits(usdcValue, 6) };
+  const [shares, idleAssets, totalAssets, totalSupply] = await Promise.all([
+    vault.balanceOf(owner),
+    vault.idleAssets(),
+    vault.totalAssets(),
+    vault.totalSupply(),
+  ]);
+  // Full-NAV pricing (see PRICING RULE above); fullyIdle gates deposit/withdraw availability.
+  const usdcValue: bigint = totalSupply === 0n ? 0n : (shares * totalAssets) / totalSupply;
+  const fullyIdle = idleAssets >= totalAssets;
+  return { shares, usdcValue, idleAssets, fullyIdle, display: formatUnits(usdcValue, 6) };
 }
 
 export async function readApy(): Promise<number> {
@@ -613,7 +624,8 @@ describe("encodeDeposit", () => {
 Run the **frontend-design skill before writing UI code** in this task; design for both themes; no chain names in the primary flow.
 
 - [ ] **Step 1: SaveCard (the one button).** Amount input → on change, debounce-call `createDepositTx` and render the fee preview from `tx.feeQuotes[0].fees.totals.feeTokenAmountInUSD` ("Total cost incl. routing + gas: $X.XX — nothing hidden"). Confirm → reuse the scaffold's exact 4-step send (from `TransferCard.tsx:84-138`): `createDepositTx` → `handleEIP7702Authorizations(transaction.userOps, signAuthorization, walletAddress)` → `signMessage({ message: transaction.rootHash }, { address: walletAddress })` → `universalAccount.sendTransaction(transaction, signature, authorizations)`. On success push `{id: sendResult.transactionId, kind: "save", amount}` into activity state.
-- [ ] **Step 2: PositionCard.** Poll `readPosition(owner)` + `readApy()` every 15s: big USDC value, shares subtitle, live APY badge, "Withdraw" secondary action → same 4-step send with `createWithdrawTx`. If `shares→assets > idleAssets`, show "Unlocking from strategy…" state and surface a copyable `make exit` hint (demo-operator path) instead of failing silently.
+- [ ] **Step 2: PositionCard.** Poll `readPosition(owner)` + `readApy()` every 15s: big USDC value (full-NAV pricing from `readPosition` — never `convertToAssets`), shares subtitle, live APY badge, "Withdraw" secondary action → same 4-step send with `createWithdrawTx`.
+- [ ] **Step 2b: Interaction-window guard (fork-test finding).** Save and Withdraw are enabled ONLY when `readPosition(...).fullyIdle` is true — while funds are deployed to Aave, the vault's ERC-4626 share math misprices against idle-only assets, so user transactions must never execute mid-deployment. When not fully idle, both actions show a calm "Optimizing yield — back in a moment" state with a copyable `make exit` hint (demo-operator recalls, UI re-enables automatically on next poll). Cranks (`make crank`) run between user interactions, never during them.
 - [ ] **Step 3: Home composition.** One unified-balance hero number from `getPrimaryAssets().totalAmountInUSD`; `ChainBreakdown` = collapsible "where your money physically lives" listing per-chain `chainAggregation` rows (this is the ONLY place chain names appear); then PositionCard + SaveCard.
 - [ ] **Step 4: ActivityFeed.** `getTransactions(1, 15)` + local optimistic entries; each in-flight tx renders staged progress (stages + timings calibrated in Task 9): Signed → Routing funds → Executing on destination → Confirmed, with a `https://universalx.app/activity/details?id=<transactionId>` link.
 - [ ] **Step 5: Rebrand.** Title/metadata "Everyield — the savings account that doesn't know what a chain is"; strip scaffold demo copy, purple gradient, trustwallet/berachain logo URLs, Next.js svgs; keep `login({ loginMethods: ["email", "google"] })`; landing = one sentence + one Login button.
