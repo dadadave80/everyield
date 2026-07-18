@@ -41,7 +41,7 @@ contract DeployEveryield is DeployVaultCore {
     }
 
     // ---- adapter (FFI string cut: AaveV3Adapter has no exportSelectors) ----
-    function buildAdapterCuts(address admin_, address vault_)
+    function buildAdapterCuts(address admin_, address vault_, address asset_, address provider_)
         public
         returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
     {
@@ -53,21 +53,38 @@ contract DeployEveryield is DeployVaultCore {
         cuts[4] = _cut(address(new AccessControlDiamondCut()));
         (init, initCalldata) = _withUpgradeableIntrospection(
             address(new EveryieldAaveInit()),
-            abi.encodeCall(EveryieldAaveInit.init, (admin_, AAVE_PROVIDER, USDC, vault_, admin_))
+            abi.encodeCall(EveryieldAaveInit.init, (admin_, provider_, asset_, vault_, admin_))
         );
+    }
+
+    /// @notice Mainnet-asset overload: delegates with the Arbitrum USDC/Aave constants.
+    function buildAdapterCuts(address admin_, address vault_)
+        public
+        returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
+    {
+        (cuts, init, initCalldata) = buildAdapterCuts(admin_, vault_, USDC, AAVE_PROVIDER);
     }
 
     /// @notice Deploys and wires the whole stack in one broadcast. `admin` = deployer EOA.
     function deployAll(address admin) public returns (address vault, address manager, address adapter) {
+        (vault, manager, adapter) = _deployAll(admin, USDC, AAVE_PROVIDER);
+    }
+
+    /// @dev Shared assembly/wiring logic; `asset`/`provider` let non-mainnet callers substitute a
+    ///      testnet USDC and Aave pool-address-provider without touching the mainnet path above.
+    function _deployAll(address admin, address asset, address provider)
+        internal
+        returns (address vault, address manager, address adapter)
+    {
         FacetCut[] memory cuts;
         address init;
         bytes memory cd;
 
-        (cuts, init, cd) = buildCuts(USDC, "Everyield USDC Vault", "eyUSDC", admin, 0); // inherited
+        (cuts, init, cd) = buildCuts(asset, "Everyield USDC Vault", "eyUSDC", admin, 0); // inherited
         vault = _assemble(cuts, init, cd);
         (cuts, init, cd) = buildManagerCuts(admin);
         manager = _assemble(cuts, init, cd);
-        (cuts, init, cd) = buildAdapterCuts(admin, vault);
+        (cuts, init, cd) = buildAdapterCuts(admin, vault, asset, provider);
         adapter = _assemble(cuts, init, cd);
 
         IVaultCore(vault).setStrategyManager(manager);
@@ -79,6 +96,18 @@ contract DeployEveryield is DeployVaultCore {
     function run(address admin) external returns (address vault, address manager, address adapter) {
         vm.startBroadcast();
         (vault, manager, adapter) = deployAll(admin);
+        vm.stopBroadcast();
+    }
+
+    /// @notice Testnet/dress-rehearsal entry point: same wiring as `run`, but against a caller-supplied
+    ///         asset and Aave pool-address-provider instead of the hardcoded mainnet constants. `asset`
+    ///         must be listed on `provider`'s pool, or `EveryieldAaveInit` reverts `AaveV3AdapterReserveNotListed`.
+    function runCustom(address admin, address asset, address provider)
+        external
+        returns (address vault, address manager, address adapter)
+    {
+        vm.startBroadcast();
+        (vault, manager, adapter) = _deployAll(admin, asset, provider);
         vm.stopBroadcast();
     }
 }
