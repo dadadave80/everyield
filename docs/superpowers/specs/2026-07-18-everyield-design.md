@@ -66,7 +66,7 @@ Lattice as an installable framework:
 - Shares land on the login EOA (7702 mode: EOA == account). Withdrawal is the mirror universal
   transaction calling `redeem`.
 
-## Frontend (`app/`, Next.js on Vercel)
+## Frontend (`app/`, Next.js on Vercel, **bun** as package manager/runner)
 
 Base: Particle's official `Particle-Network/universal-accounts-7702` scaffold (Privy + UA SDK +
 ethers v6), reworked for design quality (frontend-design skill at build time). Three screens, no
