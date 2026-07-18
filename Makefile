@@ -13,10 +13,7 @@ TESTNET_PROVIDER := 0xB25a5D144626a0D488e52AE717A051a2E9997076
 # RESUME=1 appends --resume (re-run after a partial broadcast / missed verification — never redeploy)
 RESUME_FLAG := $(if $(RESUME),--resume,)
 
-.PHONY: crank exit status deployer deploy-testnet deploy-mainnet deploy-local
-
-deployer: ## print the keystore's address (interactive password prompt)
-	cast wallet address $(ACCT)
+.PHONY: crank exit status deploy-testnet deploy-mainnet deploy-local
 
 deploy-testnet: ## dress rehearsal: Arbitrum Sepolia + Sourcify (deployer = broadcast sender)
 	forge script script/DeployEveryield.s.sol \
