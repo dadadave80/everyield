@@ -93,21 +93,25 @@ contract DeployEveryield is DeployVaultCore {
         IAdapterOperator(adapter).setOperator(manager);
     }
 
-    function run(address admin) external returns (address vault, address manager, address adapter) {
+    /// @notice Deploys the whole stack in one broadcast. The broadcaster is the admin.
+    function run() external returns (address vault, address manager, address adapter) {
         vm.startBroadcast();
-        (vault, manager, adapter) = deployAll(admin);
+        (, address deployer,) = vm.readCallers();
+        (vault, manager, adapter) = _deployAll(deployer, USDC, AAVE_PROVIDER);
         vm.stopBroadcast();
     }
 
     /// @notice Testnet/dress-rehearsal entry point: same wiring as `run`, but against a caller-supplied
     ///         asset and Aave pool-address-provider instead of the hardcoded mainnet constants. `asset`
     ///         must be listed on `provider`'s pool, or `EveryieldAaveInit` reverts `AaveV3AdapterReserveNotListed`.
-    function runCustom(address admin, address asset, address provider)
+    ///         The broadcaster is the admin.
+    function runCustom(address asset, address provider)
         external
         returns (address vault, address manager, address adapter)
     {
         vm.startBroadcast();
-        (vault, manager, adapter) = _deployAll(admin, asset, provider);
+        (, address deployer,) = vm.readCallers();
+        (vault, manager, adapter) = _deployAll(deployer, asset, provider);
         vm.stopBroadcast();
     }
 }

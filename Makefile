@@ -12,29 +12,30 @@ TESTNET_USDC     := 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d
 TESTNET_PROVIDER := 0xB25a5D144626a0D488e52AE717A051a2E9997076
 # RESUME=1 appends --resume (re-run after a partial broadcast / missed verification — never redeploy)
 RESUME_FLAG := $(if $(RESUME),--resume,)
-# Deploy targets need DEPLOYER=0x… (get it with: make deployer). Guard fails loudly if unset.
-define require_deployer
-	@test -n "$(DEPLOYER)" || { echo "Set DEPLOYER=0x… (run: make deployer)"; exit 1; }
-endef
 
-.PHONY: crank exit status deployer deploy-testnet deploy-mainnet
+.PHONY: crank exit status deployer deploy-testnet deploy-mainnet deploy-local
 
 deployer: ## print the keystore's address (interactive password prompt)
 	cast wallet address $(ACCT)
 
-deploy-testnet: ## dress rehearsal: Arbitrum Sepolia + Sourcify (DEPLOYER=0x… required)
-	$(require_deployer)
+deploy-testnet: ## dress rehearsal: Arbitrum Sepolia + Sourcify (deployer = broadcast sender)
 	forge script script/DeployEveryield.s.sol \
-	  --sig "runCustom(address,address,address)" $(DEPLOYER) $(TESTNET_USDC) $(TESTNET_PROVIDER) \
-	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) --sender $(DEPLOYER) \
+	  --sig "runCustom(address,address)" $(TESTNET_USDC) $(TESTNET_PROVIDER) \
+	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) \
 	  --broadcast --verify --verifier sourcify $(RESUME_FLAG)
 
-deploy-mainnet: ## the real thing: Arbitrum One + Sourcify (DEPLOYER=0x… required)
-	$(require_deployer)
+deploy-mainnet: ## the real thing: Arbitrum One + Sourcify (deployer = broadcast sender)
 	forge script script/DeployEveryield.s.sol \
-	  --sig "run(address)" $(DEPLOYER) \
-	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) --sender $(DEPLOYER) \
+	  --sig "run()" \
+	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) \
 	  --broadcast --verify --verifier sourcify $(RESUME_FLAG)
+
+deploy-local: ## broadcast rehearsal against a local anvil fork (no verification)
+	forge script script/DeployEveryield.s.sol \
+	  --sig "run()" \
+	  --rpc-url http://127.0.0.1:8545 \
+	  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+	  --broadcast
 
 crank: ## rebalance to 80/20 then supply adapter idle into Aave
 	cast send $(MANAGER) "rebalance()" $(RPC) $(ACCT)
