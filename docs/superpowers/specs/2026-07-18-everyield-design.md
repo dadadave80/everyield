@@ -45,10 +45,13 @@ Lattice as an installable framework:
    init: `__AaveV3Adapter_init(poolAddressesProvider, USDC, vault, rewardRecipient, dummyFeedKey,
    1e18)`. Arbitrum `PoolAddressesProvider`: `0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb`
    (re-verify against Aave address book at build time).
-3. **Allocation** — keeper-driven crank (admin EOA): vault `allocateToStrategy` → adapter
-   `deploy()` supplies Aave. **~20% of TVL stays idle** so `redeem` never blocks on a recall.
-   `StrategyManager` is used only if VaultCore's existing wiring requires it — implementation
-   detail, not a commitment.
+3. **Allocation** — resolved at plan time: the **StrategyManager diamond is required** (three
+   diamonds total). `VaultCore.totalAssets()` prices shares by staticcalling the manager's
+   `totalAllocated()`, and the adapter's operator gate must match the rebalance caller — so the
+   manager diamond is both the vault's manager and the adapter's operator, extended with a small
+   `EveryieldCrank` facet (admin-gated `crankDeploy`) so the operator can trigger the adapter's
+   `deploy()`. Keeper crank = permissionless `rebalance()` + `crankDeploy`. Target 8000 bps to the
+   strategy — **20% of TVL stays idle** so small redeems never block on a recall.
 4. **Tests** — Arbitrum-fork round trip: USDC → `deposit` → allocate → aToken balance grows →
    `redeem` pays out. Adapted from Lattice's `AaveV3AdapterFork` suite.
 5. **Deploys** — `forge script --broadcast --verify` (per standing rule, every public deploy is
