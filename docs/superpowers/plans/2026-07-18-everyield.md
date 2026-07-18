@@ -442,16 +442,8 @@ Verified addresses (bgd-labs/aave-address-book v4.60.0, each confirmed on-chain 
 - Aave-listed testnet USDC: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
 - Sourcify supports 421614.
 
-- [ ] **Step 1 (USER):** testnet ETH on the deployer (bridge Sepolia ETH via bridge.arbitrum.io, or an Alchemy/QuickNode Arbitrum Sepolia faucet); `KEYSTORE_ACCOUNT` set in `.env` (done: `daveKey`).
-- [ ] **Step 2 (USER, interactive password):**
-
-```bash
-source .env && forge script script/DeployEveryield.s.sol \
-  --sig "runCustom(address,address,address)" <DEPLOYER_ADDR> \
-  0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d 0xB25a5D144626a0D488e52AE717A051a2E9997076 \
-  --rpc-url arbitrum-sepolia --account daveKey --sender <DEPLOYER_ADDR> \
-  --broadcast --verify --verifier sourcify
-```
+- [ ] **Step 1 (USER):** testnet ETH on the deployer (`make deployer` prints the address; bridge Sepolia ETH via bridge.arbitrum.io, or an Alchemy/QuickNode Arbitrum Sepolia faucet); `KEYSTORE_ACCOUNT` set in `.env` (done: `daveKey`).
+- [ ] **Step 2 (USER, interactive password):** `make deploy-testnet` — the deployer/admin is the broadcast wallet (`vm.readCallers()` post-`startBroadcast`, anvil-rehearsed incl. `hasRole` proof). `RESUME=1` re-runs after a partial broadcast.
 
 - [ ] **Step 3: Smoke** — same casts as Task 4 Step 4 against the printed addresses on `--rpc-url arbitrum-sepolia`; write `deployments/421614.json` (same shape as 42161); run `make status` pointed at it (temporarily: `jq` path override or copy) to close Task 8's deferred live check.
 - [ ] **Step 4: Commit** broadcast evidence: `chore: testnet dress rehearsal — Arbitrum Sepolia deploy + Sourcify verification`.
@@ -467,9 +459,8 @@ source .env && forge script script/DeployEveryield.s.sol \
 - Consumes: `DeployEveryield.run(admin)`.
 - Produces: live `VAULT` / `MANAGER` / `ADAPTER` addresses consumed by Task 6's `app/lib/addresses.ts` and Task 8's Makefile.
 
-- [ ] **Step 1 (USER):** confirm deployer — Foundry keystore account name (`cast wallet list`), it needs ~$3–5 ETH on Arbitrum One; set `ARBITRUM_RPC_URL` + `KEYSTORE_ACCOUNT` in `.env` (no verifier API key — Sourcify).
-- [ ] **Step 2: Dry run**: `source .env && forge script script/DeployEveryield.s.sol --sig "run(address)" <DEPLOYER_ADDR> --rpc-url arbitrum --account <KEYSTORE_NAME> --sender <DEPLOYER_ADDR>` → simulation succeeds, returns three addresses.
-- [ ] **Step 3: Broadcast + verify**: same command + `--broadcast --verify --verifier sourcify`. Expected: all facet + diamond contracts get Sourcify full/partial matches (links: `https://repo.sourcify.dev/contracts/full_match/42161/<address>/`). If verification lags: re-run identical command with `--resume --verify --verifier sourcify`.
+- [ ] **Step 1 (USER):** deployer (`make deployer` prints it) needs ~$3–5 ETH on Arbitrum One; `.env` has `ARBITRUM_RPC_URL` + `KEYSTORE_ACCOUNT` (no verifier API key — Sourcify).
+- [ ] **Step 2: Broadcast + verify (USER, interactive password):** `make deploy-mainnet` — admin = broadcast wallet; all facet + diamond contracts get Sourcify matches (links: `https://repo.sourcify.dev/contracts/full_match/42161/<address>/`). If verification lags or the broadcast is partial: `make deploy-mainnet RESUME=1`. (Broadcast path pre-proven twice: anvil fork rehearsal + Arbitrum Sepolia dress rehearsal.)
 - [ ] **Step 4: Smoke-check the wiring on-chain**:
 
 ```bash
