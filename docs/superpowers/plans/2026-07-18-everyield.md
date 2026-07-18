@@ -185,95 +185,25 @@ pragma solidity ^0.8.30;
 
 import {DiamondLoupeFacet} from "@diamond/facets/DiamondLoupeFacet.sol";
 import {ERC165Facet} from "@diamond/facets/ERC165Facet.sol";
-import {FacetCut, FacetCutAction} from "@diamond/libraries/DiamondLib.sol";
-import {BaseDeploy} from "@lattice-script/base/BaseDeploy.s.sol";
+import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {DeployVaultCore} from "@lattice-script/base/defi/DeployVaultCore.s.sol";
 import {AccessControl} from "@lattice/access/AccessControl.sol";
 import {AaveV3Adapter} from "@lattice/defi/AaveV3Adapter.sol";
 import {StrategyManager} from "@lattice/defi/StrategyManager.sol";
 import {StrategyManagerInit} from "@lattice/defi/StrategyManagerInit.sol";
-import {VaultCore} from "@lattice/defi/VaultCore.sol";
-import {VaultCoreInit} from "@lattice/defi/VaultCoreInit.sol";
 import {AccessControlDiamondCut} from "@lattice/governance/AccessControlDiamondCut.sol";
 import {IAdapterOperator} from "@lattice/interfaces/defi/IAdapterOperator.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
-import {ERC20} from "@lattice/tokens/ERC20/ERC20.sol";
-import {ERC4626} from "@lattice/tokens/ERC4626/ERC4626.sol";
 import {EveryieldAaveInit} from "../src/EveryieldAaveInit.sol";
 import {EveryieldCrank} from "../src/EveryieldCrank.sol";
 
-contract DeployEveryield is BaseDeploy {
+/// @dev Inherits DeployVaultCore so the vault recipe (incl. its selector surgery) is reused, not copied.
+///      The inherited `buildCuts(asset_, name_, symbol_, admin_, decimalsOffset_)` builds the vault cuts.
+contract DeployEveryield is DeployVaultCore {
     address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;        // Arbitrum native USDC
     address constant AAVE_PROVIDER = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb; // Aave V3 Arbitrum
     uint16 constant TARGET_BPS = 8000;                                          // 80% Aave / 20% idle
-
-    // ---- vault (copied verbatim from @lattice-script/base/defi/DeployVaultCore.s.sol, asset param added
-    //      so the local-EVM test can use a mock ERC20 while deployAll passes real USDC) ----
-    function buildVaultCuts(address admin_, address asset_)
-        public
-        returns (FacetCut[] memory cuts, address init, bytes memory initCalldata)
-    {
-        address vaultFacet = address(new ERC4626());
-        address coreFacet = address(new VaultCore());
-        cuts = new FacetCut[](9);
-        cuts[0] = _cut(address(new ERC165Facet()));
-        cuts[1] = _cut(address(new AccessControl()));
-        cuts[2] = _cut(address(new ERC20()));
-        cuts[3] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Add, functionSelectors: _vaultSurface()});
-        cuts[4] = FacetCut({facetAddress: vaultFacet, action: FacetCutAction.Replace, functionSelectors: _decimals()});
-        cuts[5] = FacetCut({facetAddress: coreFacet, action: FacetCutAction.Add, functionSelectors: _strategySurface()});
-        cuts[6] = FacetCut({facetAddress: coreFacet, action: FacetCutAction.Replace, functionSelectors: _coreOverrides()});
-        cuts[7] = _cut(address(new DiamondLoupeFacet()));
-        cuts[8] = _cut(address(new AccessControlDiamondCut()));
-        (init, initCalldata) = _withUpgradeableIntrospection(
-            address(new VaultCoreInit()),
-            abi.encodeCall(VaultCoreInit.init, (asset_, "Everyield USDC Vault", "eyUSDC", admin_, 0))
-        );
-    }
-
-    function _vaultSurface() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](16);
-        s[0] = ERC4626.asset.selector;
-        s[1] = ERC4626.totalAssets.selector;
-        s[2] = ERC4626.convertToShares.selector;
-        s[3] = ERC4626.convertToAssets.selector;
-        s[4] = ERC4626.maxDeposit.selector;
-        s[5] = ERC4626.maxMint.selector;
-        s[6] = ERC4626.maxWithdraw.selector;
-        s[7] = ERC4626.maxRedeem.selector;
-        s[8] = ERC4626.previewDeposit.selector;
-        s[9] = ERC4626.previewMint.selector;
-        s[10] = ERC4626.previewWithdraw.selector;
-        s[11] = ERC4626.previewRedeem.selector;
-        s[12] = ERC4626.deposit.selector;
-        s[13] = ERC4626.mint.selector;
-        s[14] = ERC4626.withdraw.selector;
-        s[15] = ERC4626.redeem.selector;
-    }
-
-    function _decimals() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](1);
-        s[0] = ERC4626.decimals.selector;
-    }
-
-    function _strategySurface() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](6);
-        s[0] = VaultCore.strategyManager.selector;
-        s[1] = VaultCore.idleAssets.selector;
-        s[2] = VaultCore.allocatedAssets.selector;
-        s[3] = VaultCore.setStrategyManager.selector;
-        s[4] = VaultCore.allocateToStrategy.selector;
-        s[5] = VaultCore.recallFromStrategy.selector;
-    }
-
-    function _coreOverrides() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](5);
-        s[0] = VaultCore.totalAssets.selector;
-        s[1] = VaultCore.deposit.selector;
-        s[2] = VaultCore.mint.selector;
-        s[3] = VaultCore.withdraw.selector;
-        s[4] = VaultCore.redeem.selector;
-    }
 
     // ---- manager (lattice DeployStrategyManager shape + our crank facet) ----
     function buildManagerCuts(address admin_)
@@ -315,7 +245,7 @@ contract DeployEveryield is BaseDeploy {
         address init;
         bytes memory cd;
 
-        (cuts, init, cd) = buildVaultCuts(admin, USDC);
+        (cuts, init, cd) = buildCuts(USDC, "Everyield USDC Vault", "eyUSDC", admin, 0); // inherited
         vault = _assemble(cuts, init, cd);
         (cuts, init, cd) = buildManagerCuts(admin);
         manager = _assemble(cuts, init, cd);
@@ -356,7 +286,8 @@ contract DeployEveryieldTest is Test {
         MockERC20 usdc = new MockERC20();
         usdc.initialize("Mock USDC", "USDC", 6);
 
-        (FacetCut[] memory cuts, address init, bytes memory cd) = d.buildVaultCuts(address(this), address(usdc));
+        (FacetCut[] memory cuts, address init, bytes memory cd) =
+            d.buildCuts(address(usdc), "Everyield USDC Vault", "eyUSDC", address(this), 0);
         address vault = _assembleLocal(cuts, init, cd);
         (cuts, init, cd) = d.buildManagerCuts(address(this));
         address manager = _assembleLocal(cuts, init, cd);
@@ -438,7 +369,7 @@ contract EveryieldForkTest is Test {
         FacetCut[] memory cuts;
         address init;
         bytes memory cd;
-        (cuts, init, cd) = d.buildVaultCuts(address(this), USDC);
+        (cuts, init, cd) = d.buildCuts(USDC, "Everyield USDC Vault", "eyUSDC", address(this), 0);
         vault = _assembleLocal(cuts, init, cd);
         (cuts, init, cd) = d.buildManagerCuts(address(this));
         manager = _assembleLocal(cuts, init, cd);
