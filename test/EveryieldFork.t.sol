@@ -16,7 +16,6 @@ interface IERC4626Like {
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
     function balanceOf(address) external view returns (uint256);
     function totalAssets() external view returns (uint256);
-    function convertToAssets(uint256) external view returns (uint256);
 }
 
 contract EveryieldForkTest is Test {
@@ -80,7 +79,7 @@ contract EveryieldForkTest is Test {
         // 4. small redeem inside the idle buffer — instant
         vm.prank(user);
         uint256 got = IERC4626Like(vault).redeem(shares / 10, user, user);
-        assertGt(got, 0, "partial redeem paid from idle");
+        assertApproxEqAbs(got, 2e6, 1, "partial redeem prices against idle-only totalAssets (20e6 * 10%)");
 
         // 5. full exit (canonical): a plain rebalance() only recalls the ABOVE-target excess, leaving
         //    ~80% in Aave. And ERC4626Lib prices redeem against IDLE assets only — the VaultCore
@@ -93,7 +92,7 @@ contract EveryieldForkTest is Test {
         vm.prank(user);
         uint256 finalOut = IERC4626Like(vault).redeem(rest, user, user);
         assertGt(finalOut, 0, "final redeem");
-        assertGt(IERC20(USDC).balanceOf(user), 100e6 - 1e6, "user got principal (+yield) back");
+        assertGe(IERC20(USDC).balanceOf(user), 100e6, "no principal loss after full exit");
     }
 
     function _assembleLocal(FacetCut[] memory cuts, address init, bytes memory cd) internal returns (address) {
