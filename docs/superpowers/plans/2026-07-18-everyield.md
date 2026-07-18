@@ -430,6 +430,34 @@ NOTE for implementer on step 5's recall math: after the partial redeem, `totalAs
 
 ---
 
+### Task 4a: Testnet dress rehearsal — Arbitrum Sepolia  ⚠️ USER GATE (testnet gas)
+
+Validates the real broadcast path (`runCustom` with the EOA as sender, all wiring) and the Sourcify
+verification flow at zero cost. Contracts only — Particle UA has no testnet support.
+
+Verified addresses (bgd-labs/aave-address-book v4.60.0, each confirmed on-chain via `cast` —
+`getPool()` resolves and `getReserveData(USDC).aTokenAddress` is non-zero):
+- Chain: Arbitrum Sepolia (421614), RPC alias `arbitrum-sepolia`
+- Aave `PoolAddressesProvider`: `0xB25a5D144626a0D488e52AE717A051a2E9997076`
+- Aave-listed testnet USDC: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
+- Sourcify supports 421614.
+
+- [ ] **Step 1 (USER):** testnet ETH on the deployer (bridge Sepolia ETH via bridge.arbitrum.io, or an Alchemy/QuickNode Arbitrum Sepolia faucet); `KEYSTORE_ACCOUNT` set in `.env` (done: `daveKey`).
+- [ ] **Step 2 (USER, interactive password):**
+
+```bash
+source .env && forge script script/DeployEveryield.s.sol \
+  --sig "runCustom(address,address,address)" <DEPLOYER_ADDR> \
+  0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d 0xB25a5D144626a0D488e52AE717A051a2E9997076 \
+  --rpc-url arbitrum-sepolia --account daveKey --sender <DEPLOYER_ADDR> \
+  --broadcast --verify --verifier sourcify
+```
+
+- [ ] **Step 3: Smoke** — same casts as Task 4 Step 4 against the printed addresses on `--rpc-url arbitrum-sepolia`; write `deployments/421614.json` (same shape as 42161); run `make status` pointed at it (temporarily: `jq` path override or copy) to close Task 8's deferred live check.
+- [ ] **Step 4: Commit** broadcast evidence: `chore: testnet dress rehearsal — Arbitrum Sepolia deploy + Sourcify verification`.
+
+---
+
 ### Task 4: Mainnet deploy to Arbitrum One  ⚠️ USER GATE
 
 **Files:**
