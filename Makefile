@@ -13,7 +13,19 @@ TESTNET_PROVIDER := 0xB25a5D144626a0D488e52AE717A051a2E9997076
 # RESUME=1 appends --resume (re-run after a partial broadcast / missed verification — never redeploy)
 RESUME_FLAG := $(if $(RESUME),--resume,)
 
-.PHONY: crank exit status deploy-testnet deploy-mainnet deploy-local
+.PHONY: crank exit status deploy-testnet deploy-mainnet deploy-local verify-testnet verify-mainnet
+
+verify-testnet: ## add Etherscan-family (Arbiscan) verification on top of Sourcify — needs ETHERSCAN_API_KEY in .env
+	forge script script/DeployEveryield.s.sol \
+	  --sig "runCustom(address,address)" $(TESTNET_USDC) $(TESTNET_PROVIDER) \
+	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) \
+	  --resume --verify --verifier etherscan --etherscan-api-key $(ETHERSCAN_API_KEY)
+
+verify-mainnet: ## same, for the Arbitrum One deployment
+	forge script script/DeployEveryield.s.sol \
+	  --sig "run()" \
+	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) \
+	  --resume --verify --verifier etherscan --etherscan-api-key $(ETHERSCAN_API_KEY)
 
 deploy-testnet: ## dress rehearsal: Arbitrum Sepolia + Sourcify (deployer = broadcast sender)
 	forge script script/DeployEveryield.s.sol \
