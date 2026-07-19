@@ -13,7 +13,7 @@
 - Package manager/runner for `app/`: **bun** (`bun install`, `bun dev`, `bun run build`, `bun test`).
 - Foundry `solc >= 0.8.30` (Lattice sources are `pragma solidity ^0.8.30`); `ffi = true` (needed by the string-cut path for `AaveV3Adapter`, which has no `exportSelectors()`).
 - Particle UA is **mainnet-only**; 7702 mode requires the Privy embedded wallet. Demo funds live on **Base**; contracts on **Arbitrum One (42161)**.
-- Budget ceiling **$10–25 total** (≈$15 USDC demo funds + gas). Rehearsals recycle the same USDC via round trips.
+- Budget ceiling **$10 hard max** (true burn target ≈$3–6): ~$3 ETH on Arbitrum One, ~$4–5 recyclable USDC float on Base. One full rehearsal (not two); the video take reuses the same float; every universal tx's `feeQuotes` is checked before signing and aborted if unreasonable.
 - Every deploy target verifies on **Etherscan/Arbiscan** at broadcast time (`--verifier etherscan`, needs `ETHERSCAN_API_KEY`; `RESUME=1` re-runs a partial broadcast — never redeploy). `make verify-testnet`/`verify-mainnet` then adds keyless **Sourcify** verification of the same broadcast (`--resume --verify --verifier sourcify`). Evidence: Arbiscan verified badge + `https://repo.sourcify.dev/contracts/full_match/<chainid>/<address>/`.
 - All commits GPG-signed (run git with sandbox disabled). Conventional Commit messages.
 - No chain names in the primary UI flow. No `ponytail:` comments in code.
