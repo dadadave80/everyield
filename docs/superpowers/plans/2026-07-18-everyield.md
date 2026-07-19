@@ -14,7 +14,7 @@
 - Foundry `solc >= 0.8.30` (Lattice sources are `pragma solidity ^0.8.30`); `ffi = true` (needed by the string-cut path for `AaveV3Adapter`, which has no `exportSelectors()`).
 - Particle UA is **mainnet-only**; 7702 mode requires the Privy embedded wallet. Demo funds live on **Base**; contracts on **Arbitrum One (42161)**.
 - Budget ceiling **$10–25 total** (≈$15 USDC demo funds + gas). Rehearsals recycle the same USDC via round trips.
-- Every mainnet `forge script --broadcast` includes `--verify --verifier sourcify` (Sourcify: no API key; re-run with `--resume --verify --verifier sourcify` if verification is missed — never redeploy). Verification evidence links use `https://repo.sourcify.dev/contracts/full_match/42161/<address>/` (Arbiscan's own green check is Etherscan-family and will NOT reflect Sourcify).
+- Every deploy target verifies on **Etherscan/Arbiscan** at broadcast time (`--verifier etherscan`, needs `ETHERSCAN_API_KEY`; `RESUME=1` re-runs a partial broadcast — never redeploy). `make verify-testnet`/`verify-mainnet` then adds keyless **Sourcify** verification of the same broadcast (`--resume --verify --verifier sourcify`). Evidence: Arbiscan verified badge + `https://repo.sourcify.dev/contracts/full_match/<chainid>/<address>/`.
 - All commits GPG-signed (run git with sandbox disabled). Conventional Commit messages.
 - No chain names in the primary UI flow. No `ponytail:` comments in code.
 - Deployer key via Foundry keystore `--account` flag — never a raw private key in env or shell history.

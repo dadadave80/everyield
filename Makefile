@@ -15,29 +15,29 @@ RESUME_FLAG := $(if $(RESUME),--resume,)
 
 .PHONY: crank exit status deploy-testnet deploy-mainnet deploy-local verify-testnet verify-mainnet
 
-verify-testnet: ## add Etherscan-family (Arbiscan) verification on top of Sourcify — needs ETHERSCAN_API_KEY in .env
+verify-testnet: ## supplementary Sourcify verification of the existing testnet broadcast (no key needed)
 	forge script script/DeployEveryield.s.sol \
 	  --sig "runCustom(address,address)" $(TESTNET_USDC) $(TESTNET_PROVIDER) \
-	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) \
-	  --resume --verify --verifier etherscan --etherscan-api-key $(ETHERSCAN_API_KEY)
+	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) --broadcast \
+	  --resume --verify --verifier sourcify
 
 verify-mainnet: ## same, for the Arbitrum One deployment
 	forge script script/DeployEveryield.s.sol \
 	  --sig "run()" \
-	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) \
-	  --resume --verify --verifier etherscan --etherscan-api-key $(ETHERSCAN_API_KEY)
+	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) --broadcast \
+	  --resume --verify --verifier sourcify
 
-deploy-testnet: ## dress rehearsal: Arbitrum Sepolia + Sourcify (deployer = broadcast sender)
+deploy-testnet: ## dress rehearsal: Arbitrum Sepolia + Etherscan/Arbiscan (needs ETHERSCAN_API_KEY)
 	forge script script/DeployEveryield.s.sol \
 	  --sig "runCustom(address,address)" $(TESTNET_USDC) $(TESTNET_PROVIDER) \
 	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) \
-	  --broadcast --verify --verifier sourcify $(RESUME_FLAG)
+	  --broadcast --verify --verifier etherscan --etherscan-api-key $(ETHERSCAN_API_KEY) $(RESUME_FLAG)
 
-deploy-mainnet: ## the real thing: Arbitrum One + Sourcify (deployer = broadcast sender)
+deploy-mainnet: ## the real thing: Arbitrum One + Etherscan/Arbiscan (needs ETHERSCAN_API_KEY)
 	forge script script/DeployEveryield.s.sol \
 	  --sig "run()" \
 	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) \
-	  --broadcast --verify --verifier sourcify $(RESUME_FLAG)
+	  --broadcast --verify --verifier etherscan --etherscan-api-key $(ETHERSCAN_API_KEY) $(RESUME_FLAG)
 
 deploy-local: ## broadcast rehearsal against a local anvil fork (no verification)
 	forge script script/DeployEveryield.s.sol \
