@@ -1535,16 +1535,16 @@
       "internal_type": "address",
       "value": "0xC55f366C1CDC3Bb594b25c48537207D1e18918bA"
     },
-    "adapter": {
-      "internal_type": "address",
-      "value": "0x741Ec1390FA550cdcD9A4b5dE091D06557E4aCd5"
-    },
     "manager": {
       "internal_type": "address",
       "value": "0xdaC8b1CaBfab28F99D6B572E464a42b37FAC7D1A"
+    },
+    "adapter": {
+      "internal_type": "address",
+      "value": "0x741Ec1390FA550cdcD9A4b5dE091D06557E4aCd5"
     }
   },
-  "timestamp": 1784430732356,
+  "timestamp": 1784431029727,
   "chain": 421614,
   "commit": "5f48cc8"
 }

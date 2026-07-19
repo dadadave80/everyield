@@ -15,14 +15,16 @@ RESUME_FLAG := $(if $(RESUME),--resume,)
 
 .PHONY: crank exit status deploy-testnet deploy-mainnet deploy-local verify-testnet verify-mainnet
 
+# env -u: an exported ETHERSCAN_API_KEY makes forge resolve the Etherscan client even under
+# --verifier sourcify — strip it so these targets are Sourcify-only regardless of shell env.
 verify-testnet: ## supplementary Sourcify verification of the existing testnet broadcast (no key needed)
-	forge script script/DeployEveryield.s.sol \
+	env -u ETHERSCAN_API_KEY forge script script/DeployEveryield.s.sol \
 	  --sig "runCustom(address,address)" $(TESTNET_USDC) $(TESTNET_PROVIDER) \
 	  --rpc-url $(ARBITRUM_SEPOLIA_RPC_URL) $(ACCT) --broadcast \
 	  --resume --verify --verifier sourcify
 
 verify-mainnet: ## same, for the Arbitrum One deployment
-	forge script script/DeployEveryield.s.sol \
+	env -u ETHERSCAN_API_KEY forge script script/DeployEveryield.s.sol \
 	  --sig "run()" \
 	  --rpc-url $(ARBITRUM_RPC_URL) $(ACCT) --broadcast \
 	  --resume --verify --verifier sourcify
