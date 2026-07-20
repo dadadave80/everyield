@@ -3,7 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { ITransaction, UniversalAccount } from "@particle-network/universal-account-sdk";
 import { createDepositTx } from "@/lib/everyield";
-import { feeDrifted, readFeePreview, type SendArgs } from "@/lib/send";
+import {
+  classifyQuoteError,
+  errorMessage,
+  feeDrifted,
+  FEE_HEADROOM_USD,
+  INSUFFICIENT_FEE_MESSAGE,
+  readFeePreview,
+  type SendArgs,
+} from "@/lib/send";
 import { formatUsd, useDebounced } from "@/lib/ui";
 import { FeePreview } from "@/components/FeePreview";
 import { OptimizingNotice } from "@/components/OptimizingNotice";
@@ -42,13 +50,20 @@ export function SaveCard({
 
   const numeric = parseFloat(amount);
   const validNumber = Number.isFinite(numeric) && numeric > 0;
-  const overBalance = validNumber && numeric > available + 1e-9;
+  // Reserve FEE_HEADROOM_USD off the top so Max — and any amount typed inside
+  // that band — never leaves zero runway for this deposit's own network fee.
+  const headroom = Math.max(available - FEE_HEADROOM_USD, 0);
+  const overBalance = validNumber && numeric > headroom + 1e-9;
+  // Distinguishes "genuinely more than you have" from "inside the fee
+  // headroom" so the two get different, honest copy below.
+  const trulyOverBalance = validNumber && numeric > available + 1e-9;
+  const inFeeHeadroomZone = overBalance && !trulyOverBalance;
   const canPreview = validNumber && !overBalance && !!ua && !!owner && fullyIdle;
 
   // Debounced fee preview: build the deposit tx, read its quote, reuse it on confirm.
   useEffect(() => {
     const d = parseFloat(debounced);
-    if (!Number.isFinite(d) || d <= 0 || d > available + 1e-9 || !ua || !owner || !fullyIdle) {
+    if (!Number.isFinite(d) || d <= 0 || d > headroom + 1e-9 || !ua || !owner || !fullyIdle) {
       setTx(null);
       setPreviewing(false);
       return;
@@ -64,13 +79,17 @@ export function SaveCard({
         console.error("deposit preview failed", e);
         if (seq === previewSeq.current) {
           setTx(null);
-          setError("Couldn't check the cost just now. Adjust the amount to retry.");
+          setError(
+            classifyQuoteError(errorMessage(e)) === "insufficient-fee"
+              ? INSUFFICIENT_FEE_MESSAGE
+              : "Couldn't check the cost just now. Adjust the amount to retry.",
+          );
         }
       } finally {
         if (seq === previewSeq.current) setPreviewing(false);
       }
     })();
-  }, [debounced, available, ua, owner, fullyIdle]);
+  }, [debounced, headroom, ua, owner, fullyIdle]);
 
   // Any edit to the amount invalidates a fresh tx awaiting a fee-drift
   // re-confirm — never sign a stale amount's transaction.
@@ -116,9 +135,13 @@ export function SaveCard({
       });
       setAmount("");
       setTx(null);
-    } catch {
+    } catch (e) {
       setConfirmTx(null);
-      setError("That didn't go through. Nothing was moved — you can retry.");
+      setError(
+        classifyQuoteError(errorMessage(e)) === "insufficient-fee"
+          ? INSUFFICIENT_FEE_MESSAGE
+          : "That didn't go through. Nothing was moved — you can retry.",
+      );
     } finally {
       setRebuilding(false);
     }
@@ -165,8 +188,8 @@ export function SaveCard({
             ))}
             <button
               type="button"
-              disabled={!fullyIdle || busy || available <= 0}
-              onClick={() => setAmount(available.toFixed(2))}
+              disabled={!fullyIdle || busy || headroom <= 0}
+              onClick={() => setAmount(headroom.toFixed(2))}
               className="rounded-full border border-line px-2.5 py-1 text-xs text-accent transition-colors hover:bg-surface-2 disabled:opacity-40"
             >
               Max
@@ -181,8 +204,13 @@ export function SaveCard({
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          {overBalance && (
+          {trulyOverBalance && (
             <p className="text-[13px] text-danger">That&apos;s more than your available money.</p>
+          )}
+          {inFeeHeadroomZone && (
+            <p className="text-[13px] text-ink-soft">
+              We keep ~$0.50 aside so you can always afford network fees.
+            </p>
           )}
           {validNumber && !overBalance && (
             <FeePreview fee={fee} loading={settledPreview} />

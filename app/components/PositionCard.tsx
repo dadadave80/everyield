@@ -6,7 +6,14 @@ import { ArrowUpRight } from "lucide-react";
 import type { ITransaction, UniversalAccount } from "@particle-network/universal-account-sdk";
 import type { Position } from "@/lib/everyield";
 import { createWithdrawTx } from "@/lib/everyield";
-import { feeDrifted, readFeePreview, type SendArgs } from "@/lib/send";
+import {
+  classifyQuoteError,
+  errorMessage,
+  feeDrifted,
+  INSUFFICIENT_FEE_MESSAGE,
+  readFeePreview,
+  type SendArgs,
+} from "@/lib/send";
 import { formatUsd, splitUsd, useCountUp, useDebounced } from "@/lib/ui";
 import { FeePreview } from "@/components/FeePreview";
 import { OptimizingNotice } from "@/components/OptimizingNotice";
@@ -110,7 +117,11 @@ export function PositionCard({
         console.error("withdraw preview failed", e);
         if (seq === previewSeq.current) {
           setTx(null);
-          setError("Couldn't check the cost just now. Adjust the amount to retry.");
+          setError(
+            classifyQuoteError(errorMessage(e)) === "insufficient-fee"
+              ? INSUFFICIENT_FEE_MESSAGE
+              : "Couldn't check the cost just now. Adjust the amount to retry.",
+          );
         }
       } finally {
         if (seq === previewSeq.current) setPreviewing(false);
@@ -169,9 +180,13 @@ export function PositionCard({
       setMode("idle");
       setAmount("");
       setTx(null);
-    } catch {
+    } catch (e) {
       setConfirmTx(null);
-      setError("That didn't go through. Nothing was moved — you can retry.");
+      setError(
+        classifyQuoteError(errorMessage(e)) === "insufficient-fee"
+          ? INSUFFICIENT_FEE_MESSAGE
+          : "That didn't go through. Nothing was moved — you can retry.",
+      );
     } finally {
       setRebuilding(false);
     }

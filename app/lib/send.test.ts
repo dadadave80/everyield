@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { feeDrifted, usdAmount } from "./send";
+import { classifyQuoteError, feeDrifted, usdAmount } from "./send";
 
 describe("usdAmount", () => {
   it("decodes hex (any case) and plain decimal without throwing, and fails closed to 0", () => {
@@ -62,5 +62,26 @@ describe("feeDrifted", () => {
     // Just above crossover (prev $2.00): pct $0.40 governs (floor would allow $0.25).
     expect(feeDrifted(2, 2.3)).toBe(false); // diff $0.30 < pct $0.40, but > floor $0.25
     expect(feeDrifted(2, 2.45)).toBe(true); // diff $0.45 > pct $0.40
+  });
+});
+
+// classifyQuoteError names the one quote/build failure whose cause is
+// actually knowable (the unified balance can't cover its own network fee) so
+// the UI can show honest copy instead of a blanket "couldn't check the cost".
+describe("classifyQuoteError", () => {
+  it("classifies the SDK's exact insufficient-fee message, case-insensitively", () => {
+    expect(
+      classifyQuoteError("Insufficient balance for gas fees, please try again after making a deposit."),
+    ).toBe("insufficient-fee");
+    expect(classifyQuoteError("insufficient balance for gas fees")).toBe("insufficient-fee");
+    expect(classifyQuoteError("INSUFFICIENT BALANCE FOR GAS FEES")).toBe("insufficient-fee");
+  });
+
+  it("falls back to generic for unrelated errors and empty/missing input", () => {
+    expect(classifyQuoteError("Network request failed")).toBe("generic");
+    expect(classifyQuoteError("User rejected the request")).toBe("generic");
+    expect(classifyQuoteError("")).toBe("generic");
+    expect(classifyQuoteError(null)).toBe("generic");
+    expect(classifyQuoteError(undefined)).toBe("generic");
   });
 });

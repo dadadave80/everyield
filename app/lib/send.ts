@@ -111,6 +111,36 @@ export function feeDrifted(previousTotal: number, freshTotal: number): boolean {
   return Math.abs(freshTotal - previousTotal) > Math.max(previousTotal * FEE_DRIFT_PCT, FEE_DRIFT_ABS_USD);
 }
 
+// Particle's observed fee for a deposit/withdraw is ~$0.14 — reserving a
+// multiple of that means the Max chip never lands the unified balance at
+// zero headroom for its own next network fee (the deposit-then-can't-withdraw
+// trap this constant exists to prevent).
+export const FEE_HEADROOM_USD = 0.5;
+
+// The exact substring `ua.createUniversalTransaction` throws when the unified
+// balance can't cover the transaction's own network fee — the one quote/build
+// failure whose cause is actually knowable, so it's worth naming specifically
+// instead of folding it into the generic "couldn't check the cost" copy.
+const INSUFFICIENT_FEE_RE = /insufficient balance for gas fees/i;
+
+export type QuoteErrorKind = "insufficient-fee" | "generic";
+
+/** Classifies a quote/build failure message so preview and confirm error
+ * states can show honest, specific copy for the one knowable cause — the
+ * amount the user typed is irrelevant when this is why it failed. */
+export function classifyQuoteError(message: string | null | undefined): QuoteErrorKind {
+  return message && INSUFFICIENT_FEE_RE.test(message) ? "insufficient-fee" : "generic";
+}
+
+/** Shown instead of the generic preview/build failure copy when {@link classifyQuoteError} returns `"insufficient-fee"`. */
+export const INSUFFICIENT_FEE_MESSAGE =
+  "Your balance can't cover the network fee (~$0.15). Add a little USDC or ETH on any chain — your savings are safe and withdrawable the moment it arrives.";
+
+/** Extracts a printable message from a caught value of unknown shape. */
+export function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 /** Honest cost preview pulled straight from the transaction's fee quote. */
 export function readFeePreview(transaction: ITransaction): {
   total: number;
