@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { ITransaction, UniversalAccount } from "@particle-network/universal-account-sdk";
 import type { Position } from "@/lib/everyield";
 import { createWithdrawTx } from "@/lib/everyield";
-import { readFeePreview, type SendArgs } from "@/lib/send";
+import { feeDrifted, readFeePreview, type SendArgs } from "@/lib/send";
 import { formatUsd, splitUsd, useCountUp } from "@/lib/ui";
 import { FeePreview } from "@/components/FeePreview";
 import { OptimizingNotice } from "@/components/OptimizingNotice";
@@ -34,6 +34,10 @@ export function PositionCard({
   const [tx, setTx] = useState<ITransaction | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A fresh transaction rebuilt at confirm time whose fee drifted enough from
+  // the displayed preview to require a second click before it's signed.
+  const [confirmTx, setConfirmTx] = useState<ITransaction | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
 
   const value = position ? Number(position.display) : 0;
   const animatedValue = useCountUp(value);
@@ -51,6 +55,7 @@ export function PositionCard({
     setMode("confirm");
     setPreviewing(true);
     setTx(null);
+    setConfirmTx(null);
     try {
       const built = await createWithdrawTx(ua, position.shares, owner);
       setTx(built as ITransaction);
@@ -63,25 +68,46 @@ export function PositionCard({
   };
 
   const confirmWithdraw = async () => {
-    if (!tx || !position) return;
+    if (!tx || !position || !ua || !owner) return;
     setError(null);
+    setRebuilding(true);
     try {
+      // Particle's server-side pending-transaction record has a short TTL, so
+      // the stored preview is display-only — build a fresh transaction right
+      // before signing. If this click is itself the re-confirm after a
+      // fee-drift warning, sign that already-fresh transaction as-is instead
+      // of rebuilding (and re-warning) again.
+      let fresh = confirmTx;
+      if (!fresh) {
+        fresh = (await createWithdrawTx(ua, position.shares, owner)) as ITransaction;
+        const freshFee = readFeePreview(fresh);
+        if (fee && freshFee && feeDrifted(fee.total, freshFee.total)) {
+          setTx(fresh);
+          setConfirmTx(fresh);
+          return;
+        }
+      }
+      setConfirmTx(null);
       await onSend({
         kind: "withdraw",
-        transaction: tx,
+        transaction: fresh,
         amountLabel: formatUsd(value),
         title: `Withdraw ${formatUsd(value)} from Everyield savings`,
       });
       setMode("idle");
       setTx(null);
     } catch {
+      setConfirmTx(null);
       setError("That didn't go through. Nothing was moved — you can retry.");
+    } finally {
+      setRebuilding(false);
     }
   };
 
   const cancel = () => {
     setMode("idle");
     setTx(null);
+    setConfirmTx(null);
     setError(null);
   };
 
@@ -130,6 +156,11 @@ export function PositionCard({
                 available money.
               </div>
               <FeePreview fee={fee} loading={previewing} />
+              {confirmTx && (
+                <p className="text-[13px] text-ink-soft">
+                  The cost changed since you last checked — review above and tap confirm again.
+                </p>
+              )}
               {error && <p className="text-[13px] text-danger">{error}</p>}
               <div className="flex gap-2">
                 <button
@@ -143,10 +174,16 @@ export function PositionCard({
                 <button
                   type="button"
                   onClick={confirmWithdraw}
-                  disabled={busy || previewing || !tx}
+                  disabled={busy || previewing || rebuilding || !tx}
                   className="h-11 flex-[1.4] rounded-full bg-accent text-sm font-medium text-accent-ink outline-none transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  {busy ? "Withdrawing…" : "Confirm withdrawal"}
+                  {rebuilding
+                    ? "Checking…"
+                    : busy
+                      ? "Withdrawing…"
+                      : confirmTx
+                        ? "Confirm at updated cost"
+                        : "Confirm withdrawal"}
                 </button>
               </div>
             </div>

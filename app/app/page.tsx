@@ -36,7 +36,7 @@ export default function Home() {
   const { login } = useLogin();
   const { createWallet } = useCreateWallet();
   const { signMessage } = useSignMessage();
-  const { wallets } = useWallets();
+  const { wallets, ready: walletsReady } = useWallets();
   const { signAuthorization } = useSign7702Authorization();
 
   const [walletCreated, setWalletCreated] = useState(false);
@@ -75,7 +75,11 @@ export default function Home() {
   // 1. Ensure embedded wallet exists after login
   useEffect(() => {
     const ensureWallet = async () => {
-      if (!ready || !user) return;
+      // Wait for Privy's wallet list to actually hydrate before deciding it's
+      // empty — otherwise this fires on every reload against a stale/loading
+      // list and `createWallet()` reliably fails with "User already has an
+      // embedded wallet" (benign, but noisy in the console).
+      if (!ready || !authenticated || !user || !walletsReady) return;
       const embeddedWallet = wallets?.find((w) => w.walletClientType === "privy");
       if (embeddedWallet) {
         setWalletCreated(true);
@@ -86,13 +90,16 @@ export default function Home() {
           await createWallet();
           setWalletCreated(true);
         } catch (err) {
-          console.error("Wallet creation failed:", err);
+          const message = err instanceof Error ? err.message : String(err);
+          if (!message.includes("already has an embedded wallet")) {
+            console.error("Wallet creation failed:", err);
+          }
           walletCreationAttempted.current = false;
         }
       }
     };
     ensureWallet();
-  }, [ready, user, createWallet, walletCreated, wallets]);
+  }, [ready, authenticated, user, createWallet, walletCreated, wallets, walletsReady]);
 
   // 2. Initialize Universal Account with EIP-7702 enabled
   useEffect(() => {

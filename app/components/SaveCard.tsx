@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ITransaction, UniversalAccount } from "@particle-network/universal-account-sdk";
 import { createDepositTx } from "@/lib/everyield";
-import { readFeePreview, type SendArgs } from "@/lib/send";
+import { feeDrifted, readFeePreview, type SendArgs } from "@/lib/send";
 import { formatUsd, useDebounced } from "@/lib/ui";
 import { FeePreview } from "@/components/FeePreview";
 import { OptimizingNotice } from "@/components/OptimizingNotice";
@@ -33,6 +33,10 @@ export function SaveCard({
   const [tx, setTx] = useState<ITransaction | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A fresh transaction rebuilt at confirm time whose fee drifted enough from
+  // the displayed preview to require a second click before it's signed.
+  const [confirmTx, setConfirmTx] = useState<ITransaction | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
   const debounced = useDebounced(amount, 450);
   const previewSeq = useRef(0);
 
@@ -68,23 +72,49 @@ export function SaveCard({
     })();
   }, [debounced, available, ua, owner, fullyIdle]);
 
+  // Any edit to the amount invalidates a fresh tx awaiting a fee-drift
+  // re-confirm — never sign a stale amount's transaction.
+  useEffect(() => {
+    setConfirmTx(null);
+  }, [amount]);
+
   const fee = tx ? readFeePreview(tx) : null;
   const settledPreview = previewing || debounced !== amount;
 
   const save = async () => {
-    if (!tx || !validNumber) return;
+    if (!tx || !validNumber || !ua || !owner) return;
     setError(null);
+    setRebuilding(true);
     try {
+      // Particle's server-side pending-transaction record has a short TTL, so
+      // the stored preview is display-only — build a fresh transaction right
+      // before signing. If this click is itself the re-confirm after a
+      // fee-drift warning, sign that already-fresh transaction as-is instead
+      // of rebuilding (and re-warning) again.
+      let fresh = confirmTx;
+      if (!fresh) {
+        fresh = (await createDepositTx(ua, amount, owner)) as ITransaction;
+        const freshFee = readFeePreview(fresh);
+        if (fee && freshFee && feeDrifted(fee.total, freshFee.total)) {
+          setTx(fresh);
+          setConfirmTx(fresh);
+          return;
+        }
+      }
+      setConfirmTx(null);
       await onSend({
         kind: "save",
-        transaction: tx,
+        transaction: fresh,
         amountLabel: formatUsd(numeric),
         title: `Add ${formatUsd(numeric)} to Everyield savings`,
       });
       setAmount("");
       setTx(null);
     } catch {
+      setConfirmTx(null);
       setError("That didn't go through. Nothing was moved — you can retry.");
+    } finally {
+      setRebuilding(false);
     }
   };
 
@@ -151,18 +181,27 @@ export function SaveCard({
           {validNumber && !overBalance && (
             <FeePreview fee={fee} loading={settledPreview} />
           )}
+          {confirmTx && (
+            <p className="text-[13px] text-ink-soft">
+              The cost changed since you last checked — review above and tap Save again to confirm.
+            </p>
+          )}
           {error && <p className="text-[13px] text-danger">{error}</p>}
           <button
             type="button"
             onClick={save}
-            disabled={!tx || busy || settledPreview || overBalance}
+            disabled={!tx || busy || rebuilding || settledPreview || overBalance}
             className="h-13 w-full rounded-full bg-accent py-4 text-[15px] font-medium text-accent-ink outline-none transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            {busy
-              ? "Saving…"
-              : validNumber && !overBalance
-                ? `Save ${formatUsd(numeric)}`
-                : "Enter an amount"}
+            {rebuilding
+              ? "Checking…"
+              : busy
+                ? "Saving…"
+                : confirmTx
+                  ? `Confirm ${formatUsd(numeric)} at updated cost`
+                  : validNumber && !overBalance
+                    ? `Save ${formatUsd(numeric)}`
+                    : "Enter an amount"}
           </button>
         </div>
       )}

@@ -99,6 +99,17 @@ export const usdAmount = (v?: string | null): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+// A confirm-time rebuild's fee is only surfaced for a required re-click when it
+// diverges meaningfully from the debounced preview shown pre-click — routine
+// SDK-quote jitter between the two builds shouldn't force an extra click.
+const FEE_DRIFT_PCT = 0.2;
+const FEE_DRIFT_ABS_USD = 0.25;
+
+/** Whether a freshly rebuilt fee total diverges enough from the displayed preview to require re-confirmation. */
+export function feeDrifted(previousTotal: number, freshTotal: number): boolean {
+  return Math.abs(freshTotal - previousTotal) > Math.max(previousTotal * FEE_DRIFT_PCT, FEE_DRIFT_ABS_USD);
+}
+
 /** Honest cost preview pulled straight from the transaction's fee quote. */
 export function readFeePreview(transaction: ITransaction): {
   total: number;
