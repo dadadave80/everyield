@@ -216,3 +216,36 @@
 .scroll-quiet {
   scrollbar-width: thin;
 }
+
+/* ---------- pitch deck ---------- */
+/* full-viewport vertical scroll-snap; content reveals only when its slide is active */
+.pitch-deck {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+.pitch-slide {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.pitch-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: opacity, transform;
+}
+[data-active="true"] .pitch-reveal {
+  animation: ey-rise 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--pitch-d, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pitch-deck {
+    scroll-behavior: auto;
+  }
+  .pitch-reveal {
+    opacity: 1;
+    transform: none;
+  }
+  [data-active="true"] .pitch-reveal {
+    animation: none;
+  }
+}
