@@ -1,0 +1,251 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+  Everyield — "the savings account that doesn't know what a chain is."
+  Aesthetic: quiet private bank. Warm bone paper + deep evergreen ink in light;
+  deep forest near-black + bright mint in dark. One sacred hero number.
+*/
+
+@theme inline {
+  --font-sans: var(--font-hanken);
+  --font-display: var(--font-fraunces);
+  --font-mono: var(--font-jetbrains);
+
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--positive);
+  --color-danger: var(--danger);
+  --color-field: var(--field);
+}
+
+/* ---------- Light (warm bone paper) ---------- */
+:root {
+  --paper: oklch(0.985 0.008 95);
+  --surface: oklch(1 0.003 95);
+  --surface-2: oklch(0.966 0.01 95);
+  --ink: oklch(0.245 0.02 165);
+  --ink-soft: oklch(0.45 0.02 160);
+  --ink-faint: oklch(0.6 0.018 155);
+  --line: oklch(0.9 0.012 150);
+  --accent: oklch(0.5 0.11 160);
+  --accent-strong: oklch(0.45 0.12 160);
+  --accent-ink: oklch(0.99 0.01 95);
+  --accent-soft: oklch(0.945 0.035 160);
+  --positive: oklch(0.53 0.13 160);
+  --danger: oklch(0.52 0.16 25);
+  --field: oklch(0.966 0.01 95);
+  --shadow-card: 0 1px 2px rgba(24, 42, 32, 0.04), 0 10px 30px -14px rgba(24, 42, 32, 0.16);
+  --grain-opacity: 0.04;
+}
+
+/* ---------- Dark (deep forest) ---------- */
+[data-theme="dark"] {
+  --paper: oklch(0.163 0.014 170);
+  --surface: oklch(0.202 0.016 170);
+  --surface-2: oklch(0.238 0.016 170);
+  --ink: oklch(0.95 0.01 95);
+  --ink-soft: oklch(0.72 0.012 150);
+  --ink-faint: oklch(0.56 0.014 155);
+  --line: oklch(0.305 0.014 165);
+  --accent: oklch(0.74 0.13 162);
+  --accent-strong: oklch(0.8 0.13 162);
+  --accent-ink: oklch(0.16 0.02 170);
+  --accent-soft: oklch(0.29 0.05 165);
+  --positive: oklch(0.78 0.14 162);
+  --danger: oklch(0.7 0.16 25);
+  --field: oklch(0.236 0.018 170);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 36px -18px rgba(0, 0, 0, 0.6);
+  --grain-opacity: 0.05;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: oklch(0.163 0.014 170);
+    --surface: oklch(0.202 0.016 170);
+    --surface-2: oklch(0.238 0.016 170);
+    --ink: oklch(0.95 0.01 95);
+    --ink-soft: oklch(0.72 0.012 150);
+    --ink-faint: oklch(0.56 0.014 155);
+    --line: oklch(0.305 0.014 165);
+    --accent: oklch(0.74 0.13 162);
+    --accent-strong: oklch(0.8 0.13 162);
+    --accent-ink: oklch(0.16 0.02 170);
+    --accent-soft: oklch(0.29 0.05 165);
+    --positive: oklch(0.78 0.14 162);
+    --danger: oklch(0.7 0.16 25);
+    --field: oklch(0.236 0.018 170);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 36px -18px rgba(0, 0, 0, 0.6);
+    --grain-opacity: 0.05;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    background-color: var(--paper);
+  }
+
+  body {
+    font-family: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+    background-color: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* faint engraved paper grain across the whole surface */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* a single calm evergreen glow anchored top-center, behind everything */
+  body::after {
+    content: "";
+    position: fixed;
+    top: -20vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120vw;
+    height: 70vh;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(closest-side, color-mix(in oklch, var(--accent) 16%, transparent), transparent 72%);
+    opacity: 0.5;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+  .rule-line {
+    background: var(--line);
+  }
+}
+
+/* ---------- motion ---------- */
+@keyframes ey-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ey-breathe {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+@keyframes ey-shimmer {
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.ey-rise {
+  opacity: 0;
+  animation: ey-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ey-breathe {
+  animation: ey-breathe 2.4s ease-in-out infinite;
+}
+.ey-shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--surface-2) 0%,
+    color-mix(in oklch, var(--accent) 14%, var(--surface-2)) 40%,
+    var(--surface-2) 80%
+  );
+  background-size: 200% 100%;
+  animation: ey-shimmer 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ey-rise,
+  .ey-breathe,
+  .ey-shimmer {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* thin, quiet scrollbars */
+.scroll-quiet::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--ink) 18%, transparent);
+  border-radius: 3px;
+}
+.scroll-quiet {
+  scrollbar-width: thin;
+}
+
+/* ---------- pitch deck ---------- */
+/* full-viewport vertical scroll-snap; content reveals only when its slide is active */
+.pitch-deck {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+.pitch-slide {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.pitch-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  will-change: opacity, transform;
+}
+[data-active="true"] .pitch-reveal {
+  animation: ey-rise 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--pitch-d, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pitch-deck {
+    scroll-behavior: auto;
+  }
+  .pitch-reveal {
+    opacity: 1;
+    transform: none;
+  }
+  [data-active="true"] .pitch-reveal {
+    animation: none;
+  }
+}

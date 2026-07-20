@@ -28,7 +28,7 @@ diamond on Arbitrum One.
 | Embedded wallet | Privy (Particle's official 7702 scaffold uses it) |
 | Name | Everyield (`eyUSDC` shares) |
 | Team | Solo (David) + Claude building contracts and frontend |
-| Budget | **$10–25 total**: ~$15 USDC demo funds on Base + ~$5–10 ETH gas on Arbitrum. Rehearsals are deposit→withdraw round trips, so they recycle the same USDC |
+| Budget | **$10 hard max**: ~$3 ETH on Arbitrum One (deploy measured at 29.2M gas ≈ $1–2, + cranks) and ~$4–5 USDC float on Base that round-trips back after the demo. True burn ≈ $3–6 (gas + UA routing fees); `feeQuotes` is checked before every send, so UA fees are visible pre-commit |
 | Repo shape | This repo (`everyield`) is a Foundry project that **`forge install`s Lattice** + an `app/` Next.js frontend. All hackathon Solidity lives here; nothing lands in the Lattice repo during the hackathon |
 
 ## On-chain architecture (Arbitrum One)

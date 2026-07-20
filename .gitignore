@@ -1,0 +1,8 @@
+out/
+cache/
+.env
+app/node_modules/
+app/.next/
+app/.env*.local
+broadcast/**/dry-run/
+/broadcast/**/run-1*.json

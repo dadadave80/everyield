@@ -13,8 +13,8 @@
 - Package manager/runner for `app/`: **bun** (`bun install`, `bun dev`, `bun run build`, `bun test`).
 - Foundry `solc >= 0.8.30` (Lattice sources are `pragma solidity ^0.8.30`); `ffi = true` (needed by the string-cut path for `AaveV3Adapter`, which has no `exportSelectors()`).
 - Particle UA is **mainnet-only**; 7702 mode requires the Privy embedded wallet. Demo funds live on **Base**; contracts on **Arbitrum One (42161)**.
-- Budget ceiling **$10–25 total** (≈$15 USDC demo funds + gas). Rehearsals recycle the same USDC via round trips.
-- Every mainnet `forge script --broadcast` includes `--verify` (re-run with `--resume --verify` if verification is missed — never redeploy).
+- Budget ceiling **$10 hard max** (true burn target ≈$3–6): ~$3 ETH on Arbitrum One, ~$4–5 recyclable USDC float on Base. One full rehearsal (not two); the video take reuses the same float; every universal tx's `feeQuotes` is checked before signing and aborted if unreasonable.
+- Every deploy target verifies on **Etherscan/Arbiscan** at broadcast time (`--verifier etherscan`, needs `ETHERSCAN_API_KEY`; `RESUME=1` re-runs a partial broadcast — never redeploy). `make verify-testnet`/`verify-mainnet` then adds keyless **Sourcify** verification of the same broadcast (`--resume --verify --verifier sourcify`). Evidence: Arbiscan verified badge + `https://repo.sourcify.dev/contracts/full_match/<chainid>/<address>/`.
 - All commits GPG-signed (run git with sandbox disabled). Conventional Commit messages.
 - No chain names in the primary UI flow. No `ponytail:` comments in code.
 - Deployer key via Foundry keystore `--account` flag — never a raw private key in env or shell history.
@@ -71,8 +71,7 @@ fs_permissions = [{ access = "read", path = "out" }]
 arbitrum = "${ARBITRUM_RPC_URL}"
 base = "${BASE_RPC_URL}"
 
-[etherscan]
-arbitrum = { key = "${ETHERSCAN_API_KEY}", chain = 42161 }
+# Verification uses Sourcify (no API key): forge script ... --verify --verifier sourcify
 ```
 
 - [ ] **Step 3: Write `remappings.txt`**
@@ -88,9 +87,9 @@ forge-std/=lib/forge-std/src/
 - [ ] **Step 4: Write `.env.example`** (and `.gitignore`: `out/`, `cache/`, `.env`, `app/node_modules/`, `app/.next/`, `app/.env*.local`, `broadcast/**/dry-run/`)
 
 ```bash
-ARBITRUM_RPC_URL="https://arb1.arbitrum.io/rpc"
+ARBITRUM_RPC_URL="https://arbitrum-one.public.blastapi.io"   # archive-capable; serves fork test too
 BASE_RPC_URL="https://mainnet.base.org"
-ETHERSCAN_API_KEY=""            # Etherscan v2 key, works for Arbiscan
+KEYSTORE_ACCOUNT=""             # Foundry keystore name (cast wallet list) — never a raw key
 ```
 
 - [ ] **Step 5: Write the smoke test `test/Smoke.t.sol`** — proves the install + remappings compile and lattice facets construct:
@@ -431,6 +430,26 @@ NOTE for implementer on step 5's recall math: after the partial redeem, `totalAs
 
 ---
 
+### Task 4a: Testnet dress rehearsal — Arbitrum Sepolia  ⚠️ USER GATE (testnet gas)
+
+Validates the real broadcast path (`runCustom` with the EOA as sender, all wiring) and the Sourcify
+verification flow at zero cost. Contracts only — Particle UA has no testnet support.
+
+Verified addresses (bgd-labs/aave-address-book v4.60.0, each confirmed on-chain via `cast` —
+`getPool()` resolves and `getReserveData(USDC).aTokenAddress` is non-zero):
+- Chain: Arbitrum Sepolia (421614), RPC alias `arbitrum-sepolia`
+- Aave `PoolAddressesProvider`: `0xB25a5D144626a0D488e52AE717A051a2E9997076`
+- Aave-listed testnet USDC: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
+- Sourcify supports 421614.
+
+- [ ] **Step 1 (USER):** testnet ETH on the keystore's address (`cast wallet address --account daveKey` if you need to look it up; bridge Sepolia ETH via bridge.arbitrum.io, or an Alchemy/QuickNode Arbitrum Sepolia faucet).
+- [ ] **Step 2 (USER, interactive password):** `make deploy-testnet KEYSTORE=daveKey` — keystore always explicit per invocation; the deployer/admin is the broadcast wallet (`vm.readCallers()` post-`startBroadcast`, anvil-rehearsed incl. `hasRole` proof). `RESUME=1` re-runs after a partial broadcast.
+
+- [ ] **Step 3: Smoke** — same casts as Task 4 Step 4 against the printed addresses on `--rpc-url arbitrum-sepolia`; write `deployments/421614.json` (same shape as 42161); run `make status` pointed at it (temporarily: `jq` path override or copy) to close Task 8's deferred live check.
+- [ ] **Step 4: Commit** broadcast evidence: `chore: testnet dress rehearsal — Arbitrum Sepolia deploy + Sourcify verification`.
+
+---
+
 ### Task 4: Mainnet deploy to Arbitrum One  ⚠️ USER GATE
 
 **Files:**
@@ -440,9 +459,8 @@ NOTE for implementer on step 5's recall math: after the partial redeem, `totalAs
 - Consumes: `DeployEveryield.run(admin)`.
 - Produces: live `VAULT` / `MANAGER` / `ADAPTER` addresses consumed by Task 6's `app/lib/addresses.ts` and Task 8's Makefile.
 
-- [ ] **Step 1 (USER):** confirm deployer — Foundry keystore account name (`cast wallet list`), it needs ~$3–5 ETH on Arbitrum One; export `ARBITRUM_RPC_URL` + `ETHERSCAN_API_KEY` in `.env`.
-- [ ] **Step 2: Dry run**: `source .env && forge script script/DeployEveryield.s.sol --sig "run(address)" <DEPLOYER_ADDR> --rpc-url arbitrum --account <KEYSTORE_NAME> --sender <DEPLOYER_ADDR>` → simulation succeeds, returns three addresses.
-- [ ] **Step 3: Broadcast + verify**: same command + `--broadcast --verify`. Expected: all facet + diamond contracts verified on Arbiscan. If verification lags: re-run identical command with `--resume --verify`.
+- [ ] **Step 1 (USER):** the keystore's address needs ~$3 ETH on Arbitrum One; `.env` has `ARBITRUM_RPC_URL` + `ETHERSCAN_API_KEY` (keystore is passed per invocation, never in .env).
+- [ ] **Step 2: Broadcast + verify (USER, interactive password):** `make deploy-mainnet KEYSTORE=daveKey` — admin = broadcast wallet; all facet + diamond contracts get Sourcify matches (links: `https://repo.sourcify.dev/contracts/full_match/42161/<address>/`). If verification lags or the broadcast is partial: `make deploy-mainnet RESUME=1`. (Broadcast path pre-proven twice: anvil fork rehearsal + Arbitrum Sepolia dress rehearsal.)
 - [ ] **Step 4: Smoke-check the wiring on-chain**:
 
 ```bash
@@ -515,10 +533,14 @@ export const vaultAbi = new Interface([
   "function deposit(uint256 assets, address receiver) returns (uint256)",
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256)",
   "function balanceOf(address) view returns (uint256)",
-  "function convertToAssets(uint256 shares) view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
   "function idleAssets() view returns (uint256)",
   "function totalAssets() view returns (uint256)",
 ]);
+// PRICING RULE (fork-test finding, reviewer-confirmed): NEVER price positions via
+// convertToAssets/previewRedeem — those selectors bind library-internally to idle-only
+// totalAssets. Only the external totalAssets() reports full NAV. Position value is
+// shares * totalAssets() / totalSupply().
 const providerAbi = new Interface(["function getPool() view returns (address)"]);
 const poolAbi = new Interface([
   "function getReserveData(address) view returns ((uint256,uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128))",
@@ -555,9 +577,16 @@ export async function createWithdrawTx(ua: UniversalAccount, shares: bigint, own
 
 export async function readPosition(owner: string) {
   const vault = new Contract(VAULT, vaultAbi, rpc);
-  const [shares, idleAssets] = await Promise.all([vault.balanceOf(owner), vault.idleAssets()]);
-  const usdcValue: bigint = shares === 0n ? 0n : await vault.convertToAssets(shares);
-  return { shares, usdcValue, idleAssets, display: formatUnits(usdcValue, 6) };
+  const [shares, idleAssets, totalAssets, totalSupply] = await Promise.all([
+    vault.balanceOf(owner),
+    vault.idleAssets(),
+    vault.totalAssets(),
+    vault.totalSupply(),
+  ]);
+  // Full-NAV pricing (see PRICING RULE above); fullyIdle gates deposit/withdraw availability.
+  const usdcValue: bigint = totalSupply === 0n ? 0n : (shares * totalAssets) / totalSupply;
+  const fullyIdle = idleAssets >= totalAssets;
+  return { shares, usdcValue, idleAssets, fullyIdle, display: formatUnits(usdcValue, 6) };
 }
 
 export async function readApy(): Promise<number> {
@@ -613,7 +642,8 @@ describe("encodeDeposit", () => {
 Run the **frontend-design skill before writing UI code** in this task; design for both themes; no chain names in the primary flow.
 
 - [ ] **Step 1: SaveCard (the one button).** Amount input → on change, debounce-call `createDepositTx` and render the fee preview from `tx.feeQuotes[0].fees.totals.feeTokenAmountInUSD` ("Total cost incl. routing + gas: $X.XX — nothing hidden"). Confirm → reuse the scaffold's exact 4-step send (from `TransferCard.tsx:84-138`): `createDepositTx` → `handleEIP7702Authorizations(transaction.userOps, signAuthorization, walletAddress)` → `signMessage({ message: transaction.rootHash }, { address: walletAddress })` → `universalAccount.sendTransaction(transaction, signature, authorizations)`. On success push `{id: sendResult.transactionId, kind: "save", amount}` into activity state.
-- [ ] **Step 2: PositionCard.** Poll `readPosition(owner)` + `readApy()` every 15s: big USDC value, shares subtitle, live APY badge, "Withdraw" secondary action → same 4-step send with `createWithdrawTx`. If `shares→assets > idleAssets`, show "Unlocking from strategy…" state and surface a copyable `make exit` hint (demo-operator path) instead of failing silently.
+- [ ] **Step 2: PositionCard.** Poll `readPosition(owner)` + `readApy()` every 15s: big USDC value (full-NAV pricing from `readPosition` — never `convertToAssets`), shares subtitle, live APY badge, "Withdraw" secondary action → same 4-step send with `createWithdrawTx`.
+- [ ] **Step 2b: Interaction-window guard (fork-test finding).** Save and Withdraw are enabled ONLY when `readPosition(...).fullyIdle` is true — while funds are deployed to Aave, the vault's ERC-4626 share math misprices against idle-only assets, so user transactions must never execute mid-deployment. When not fully idle, both actions show a calm "Optimizing yield — back in a moment" state with a copyable `make exit` hint (demo-operator recalls, UI re-enables automatically on next poll). Cranks (`make crank`) run between user interactions, never during them.
 - [ ] **Step 3: Home composition.** One unified-balance hero number from `getPrimaryAssets().totalAmountInUSD`; `ChainBreakdown` = collapsible "where your money physically lives" listing per-chain `chainAggregation` rows (this is the ONLY place chain names appear); then PositionCard + SaveCard.
 - [ ] **Step 4: ActivityFeed.** `getTransactions(1, 15)` + local optimistic entries; each in-flight tx renders staged progress (stages + timings calibrated in Task 9): Signed → Routing funds → Executing on destination → Confirmed, with a `https://universalx.app/activity/details?id=<transactionId>` link.
 - [ ] **Step 5: Rebrand.** Title/metadata "Everyield — the savings account that doesn't know what a chain is"; strip scaffold demo copy, purple gradient, trustwallet/berachain logo URLs, Next.js svgs; keep `login({ loginMethods: ["email", "google"] })`; landing = one sentence + one Login button.

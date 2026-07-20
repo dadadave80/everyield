@@ -1,0 +1,16 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.30"
+optimizer = true
+optimizer_runs = 1_000_000
+ffi = true                      # BaseDeploy string-cut path (AaveV3Adapter has no exportSelectors)
+fs_permissions = [{ access = "read", path = "out" }]
+
+[rpc_endpoints]
+arbitrum = "${ARBITRUM_RPC_URL}"
+base = "${BASE_RPC_URL}"
+arbitrum-sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+
+# Verification uses Sourcify (no API key): forge script ... --verify --verifier sourcify
