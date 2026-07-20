@@ -27,9 +27,31 @@ import { SaveCard } from "@/components/SaveCard";
 import { ActivityFeed, type HistoryTx } from "@/components/ActivityFeed";
 
 import { readApy, readPosition, type Position } from "@/lib/everyield";
-import { runSend, type LocalActivity, type SendArgs } from "@/lib/send";
+import { runSend, type ActivityStage, type LocalActivity, type SendArgs } from "@/lib/send";
 import { formatUsd, splitUsd, useCountUp } from "@/lib/ui";
 import { copyToClipboard, truncateAddress } from "@/lib/utils";
+
+// The final Executing → Confirmed transition is signal-driven, never a timer
+// (see `pendingConfirmations` below). If no signal lands within this window
+// we surface a neutral "taking longer than usual" state instead of pretending
+// nothing is happening — never a fake Confirmed.
+const CONFIRMATION_TIMEOUT_MS = 10 * 60 * 1000;
+// History is normally fetched once (see `fetchHistory`); while a local
+// activity is awaiting its confirmation signal we tighten just that fetch
+// (plus a balance refresh, for the UA-balance side of signal (b)) to this
+// cadence, then stop as soon as nothing is pending — never a permanent poll.
+const PENDING_POLL_MS = 10_000;
+// Guards against float noise between polls, not against real yield accrual
+// (which is orders of magnitude smaller than any real deposit/withdraw over
+// a 10s–15s window).
+const SIGNAL_EPSILON_USD = 0.005;
+
+interface PendingConfirmation {
+  kind: "save" | "withdraw";
+  transactionId?: string;
+  baselineSavingsUsd: number;
+  baselineUaUsd: number;
+}
 
 export default function Home() {
   const { ready, authenticated, logout } = usePrivy();
@@ -60,6 +82,21 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [localActivity, setLocalActivity] = useState<LocalActivity[]>([]);
   const advanceTimers = useRef<Record<string, ReturnType<typeof setTimeout>[]>>({});
+  // Local activities awaiting a real confirmation signal (see `send` and the
+  // confirmation-check effect below). Kept in a ref, not state — mutating it
+  // never needs to itself trigger a render; the `setLocalActivity`/`setStage`
+  // calls that always accompany a mutation already do that.
+  const pendingConfirmations = useRef<Record<string, PendingConfirmation>>({});
+  // Freshest position/balance without making `send` (and everything it's
+  // passed to) re-identity every 15s poll tick.
+  const positionRef = useRef<Position | null>(null);
+  const balanceRef = useRef<IAssetsResponse | null>(null);
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+  useEffect(() => {
+    balanceRef.current = balance;
+  }, [balance]);
 
   const walletCreationAttempted = useRef(false);
 
@@ -238,6 +275,60 @@ export default function Home() {
     setLocalActivity((prev) => prev.map((e) => (e.id === id ? { ...e, stage } : e)));
   }, []);
 
+  // Advances `id` to `next` only if it's still at `expected` — guards the
+  // cosmetic pacing timers below from clobbering a stage that a real signal
+  // (or the failure path) has already moved past.
+  const setStageIfCurrent = useCallback((id: string, expected: ActivityStage, next: ActivityStage) => {
+    setLocalActivity((prev) => prev.map((e) => (e.id === id && e.stage === expected ? { ...e, stage: next } : e)));
+  }, []);
+
+  // Whichever arrives first confirms an in-flight local activity:
+  //   (a) its transactionId shows up in history with a confirmed status (7), or
+  //   (b) a position/balance change consistent with the operation — deposit:
+  //       savings value rose; withdraw: UA balance rose, or savings fell.
+  // Driven entirely by the polls that already exist (history fetch, the 15s
+  // position poll, balance fetch) — never a timer standing in for the real thing.
+  useEffect(() => {
+    const pending = pendingConfirmations.current;
+    for (const id of Object.keys(pending)) {
+      const meta = pending[id];
+
+      const historyMatch = meta.transactionId
+        ? history.find((h) => h.transactionId === meta.transactionId)
+        : undefined;
+      if (historyMatch && historyMatch.status === 7) {
+        delete pending[id];
+        setStage(id, "confirmed");
+        continue;
+      }
+
+      const currentSavingsUsd = position ? Number(formatUnits(position.usdcValue, 6)) : meta.baselineSavingsUsd;
+      const currentUaUsd = balance?.totalAmountInUSD ?? meta.baselineUaUsd;
+      const signalB =
+        meta.kind === "save"
+          ? currentSavingsUsd > meta.baselineSavingsUsd + SIGNAL_EPSILON_USD
+          : currentUaUsd > meta.baselineUaUsd + SIGNAL_EPSILON_USD ||
+            currentSavingsUsd < meta.baselineSavingsUsd - SIGNAL_EPSILON_USD;
+
+      if (signalB) {
+        delete pending[id];
+        setStage(id, "confirmed");
+      }
+    }
+  }, [history, position, balance, setStage]);
+
+  // While anything is awaiting its confirmation signal, tighten the
+  // history + balance refresh to ~10s so signals (a)/(b) land promptly; stop
+  // the moment nothing is pending — never a permanent extra poll.
+  useEffect(() => {
+    if (Object.keys(pendingConfirmations.current).length === 0) return;
+    const id = setInterval(() => {
+      fetchHistory();
+      fetchBalance();
+    }, PENDING_POLL_MS);
+    return () => clearInterval(id);
+  }, [localActivity, fetchHistory, fetchBalance]);
+
   const send = useCallback(
     async (args: SendArgs) => {
       if (!universalAccount || !walletAddress) throw new Error("Account not ready");
@@ -247,6 +338,13 @@ export default function Home() {
         { id, kind: args.kind, amountLabel: args.amountLabel, stage: "signing", createdAt: Date.now() },
         ...prev,
       ]);
+      // Baseline captured before the transaction is even signed, so a later
+      // rise/fall can be attributed to it (signal (b), the fallback).
+      pendingConfirmations.current[id] = {
+        kind: args.kind,
+        baselineSavingsUsd: positionRef.current ? Number(formatUnits(positionRef.current.usdcValue, 6)) : 0,
+        baselineUaUsd: balanceRef.current?.totalAmountInUSD ?? 0,
+      };
       try {
         const txId = await runSend({
           ua: universalAccount,
@@ -257,17 +355,25 @@ export default function Home() {
           title: args.title,
           onStage: (s) => setStage(id, s),
         });
+        if (pendingConfirmations.current[id]) {
+          pendingConfirmations.current[id].transactionId = txId || undefined;
+        }
         setLocalActivity((prev) =>
           prev.map((e) => (e.id === id ? { ...e, transactionId: txId, stage: "routing" } : e)),
         );
-        // Placeholder progression — real per-stage timings are calibrated in Task 9.
-        const t1 = setTimeout(() => setStage(id, "executing"), 5000);
-        const t2 = setTimeout(() => setStage(id, "confirmed"), 12000);
+        // Cosmetic pacing only, for Signed → Routing funds → Executing. The
+        // Executing → Confirmed transition never comes from a timer — see the
+        // confirmation-check effect above. If nothing confirms within 10
+        // minutes, surface a neutral "taking longer than usual" state instead
+        // (a real signal landing afterwards still wins — see that effect).
+        const t1 = setTimeout(() => setStageIfCurrent(id, "routing", "executing"), 5000);
+        const t2 = setTimeout(() => setStageIfCurrent(id, "executing", "delayed"), CONFIRMATION_TIMEOUT_MS);
         advanceTimers.current[id] = [t1, t2];
 
         await Promise.allSettled([fetchBalance(), refreshPosition(), fetchHistory()]);
       } catch (e) {
         console.error(`${args.kind} failed`, e);
+        delete pendingConfirmations.current[id];
         setStage(id, "failed");
         throw e;
       } finally {
@@ -280,6 +386,7 @@ export default function Home() {
       signMessage,
       signAuthorization,
       setStage,
+      setStageIfCurrent,
       fetchBalance,
       refreshPosition,
       fetchHistory,

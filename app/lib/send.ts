@@ -18,6 +18,7 @@ export type ActivityStage =
   | "signed"
   | "routing"
   | "executing"
+  | "delayed"
   | "confirmed"
   | "failed";
 

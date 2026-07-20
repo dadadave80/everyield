@@ -27,6 +27,7 @@ const STAGE_TEXT: Record<ActivityStage, string> = {
   signed: "Signed",
   routing: "Routing funds",
   executing: "Executing",
+  delayed: "Taking longer than usual",
   confirmed: "Confirmed",
   failed: "Couldn't complete",
 };
@@ -39,6 +40,10 @@ function railState(stage: ActivityStage): { done: number; active: number; failed
     case "routing":
       return { done: 1, active: 1, failed: false };
     case "executing":
+    // "delayed" is not a failure and not a fake confirmation — it's still the
+    // executing step, just past the point where a signal was expected. Same
+    // calm rail visual; only the status text (above) and copy differ.
+    case "delayed":
       return { done: 2, active: 2, failed: false };
     case "confirmed":
       return { done: 4, active: -1, failed: false };
