@@ -7,7 +7,7 @@ the payoff, not the pitch. Narration lines are in quotes; screen actions are in 
 
 ## Pre-flight checklist (do this before recording)
 
-- [ ] **App running** — either `<VERCEL_URL>` (prod) or `cd app && bun dev` on `localhost:3000`. Decide which
+- [ ] **App running** — either `https://everyield.vercel.app` (prod) or `cd app && bun dev` on `localhost:3000`. Decide which
       before you start; prod is safer on camera.
 - [ ] **Funds present** — the Universal Account holds USDC on a chain *other than Arbitrum* (Base is ideal) so the
       deposit is a genuine cross-chain move. Keep enough for the ~$0.36 all-in fee plus the $2 principal.

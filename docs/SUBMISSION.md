@@ -33,7 +33,7 @@ Live on Arbitrum One, verified, and rehearsed end-to-end with real funds.
 
 ## Links
 - **Repo:** https://github.com/dadadave80/everyield (branch `feat/everyield-build`)
-- **Live app:** `<VERCEL_URL>`
+- **Live app:** `https://everyield.vercel.app`
 - **Demo video:** `<VIDEO_URL>`
 - **Contracts — Arbitrum One (chain 42161):**
   - Vault (`eyUSDC`): https://arbiscan.io/address/0x4aE34A2fA9efD143C0330c306dDF8808eE34815D

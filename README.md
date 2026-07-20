@@ -15,7 +15,7 @@ EIP-7702 mode; the on-chain savings vault is three EIP-2535 diamonds assembled f
 
 ## Try it
 
-**Live app:** `<VERCEL_URL>`
+**Live app:** `https://everyield.vercel.app`
 
 **Run locally** — the frontend lives in [`app/`](app/):
 

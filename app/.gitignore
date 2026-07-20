@@ -48,3 +48,4 @@ next-env.d.ts
 
 # But keep README.md
 !README.md
+.env*
