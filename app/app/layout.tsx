@@ -65,7 +65,7 @@ export default function RootLayout({
           content="Everyield is a savings account that earns yield everywhere at once. You see one balance, one number. It never asks you what a chain is."
         />
         <meta name="theme-color" content="#0d110f" />
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className={`${fontVars} antialiased`} suppressHydrationWarning>
         {appId && clientId && particleProjectId && particleClientKey && particleAppId ? (
