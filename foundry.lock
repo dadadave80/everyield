@@ -7,8 +7,8 @@
   },
   "lib/lattice": {
     "tag": {
-      "name": "v0.1.0",
-      "rev": "073e599efce4412b3d26ce04147095bdb44adfdf"
+      "name": "v0.2.0",
+      "rev": "e66abd548521b6219636fc3f1ae89efa5f40f78e"
     }
   }
 }

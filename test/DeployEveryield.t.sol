@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Diamond} from "@diamond/Diamond.sol";
 import {FacetCut} from "@diamond/libraries/DiamondLib.sol";
+import {LatticeDiamond} from "@lattice/LatticeDiamond.sol";
 import {IStrategyManager} from "@lattice/interfaces/defi/IStrategyManager.sol";
 import {IVaultCore} from "@lattice/interfaces/defi/IVaultCore.sol";
 import {Test} from "forge-std/Test.sol";
@@ -29,7 +29,7 @@ contract DeployEveryieldTest is Test {
     }
 
     function _assembleLocal(FacetCut[] memory cuts, address init, bytes memory cd) internal returns (address) {
-        Diamond diamond = new Diamond();
+        LatticeDiamond diamond = new LatticeDiamond();
         diamond.initialize(cuts, init, cd);
         return address(diamond);
     }
