@@ -1,0 +1,73 @@
+name: Contracts CI
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - "script/**"
+      - "test/**"
+      - "foundry.toml"
+      - "remappings.txt"
+      - "foundry.lock"
+      - "lib/**"
+      - ".github/workflows/contracts.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "script/**"
+      - "test/**"
+      - "foundry.toml"
+      - "remappings.txt"
+      - "foundry.lock"
+      - "lib/**"
+      - ".github/workflows/contracts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundry:
+    name: Foundry (fmt · build · test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Cache forge build artifacts
+        uses: actions/cache@v6
+        with:
+          path: |
+            cache
+            out
+          key: forge-build-${{ runner.os }}-${{ hashFiles('foundry.toml', 'remappings.txt', 'foundry.lock', 'src/**', 'script/**', 'test/**') }}
+          restore-keys: |
+            forge-build-${{ runner.os }}-
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Forge fmt check
+        run: forge fmt --check
+
+      - name: Forge build
+        run: forge build --sizes
+
+      # The fork suite (test/EveryieldFork.t.sol) calls vm.skip(true) in setUp when
+      # ARBITRUM_RPC_URL is unset. CI intentionally does not provide that secret, so the
+      # fork suite skips here and only the unit + assembly tests are required to pass.
+      - name: Forge test
+        run: forge test -vvv

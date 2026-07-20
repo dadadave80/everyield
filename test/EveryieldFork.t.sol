@@ -53,7 +53,7 @@ contract EveryieldForkTest is Test {
         IAdapterOperator(adapter).setOperator(manager);
         assertEq(IStrategyManager(manager).vault(), vault, "manager knows its vault");
         deal(USDC, user, 100e6); // forge-std deal; if the balance assert below fails, switch to a
-                                 // whale prank (top holder from Arbiscan) — do NOT fight stdStorage.
+        // whale prank (top holder from Arbiscan) — do NOT fight stdStorage.
         assertEq(IERC20(USDC).balanceOf(user), 100e6, "deal worked");
     }
 
