@@ -50,6 +50,8 @@ export async function createWithdrawTx(ua: UniversalAccount, shares: bigint, own
   });
 }
 
+export type Position = Awaited<ReturnType<typeof readPosition>>;
+
 export async function readPosition(owner: string) {
   const vault = new Contract(VAULT, vaultAbi, rpc);
   // ethers' dynamic Contract methods are typed `any`; without this explicit tuple

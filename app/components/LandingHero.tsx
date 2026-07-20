@@ -1,93 +1,55 @@
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Wordmark } from "@/components/Wordmark";
+
 interface LandingHeroProps {
   onLogin: () => void;
   ready: boolean;
   authenticated: boolean;
 }
 
-export function LandingHero({
-  onLogin,
-  ready,
-  authenticated,
-}: LandingHeroProps) {
+export function LandingHero({ onLogin, ready, authenticated }: LandingHeroProps) {
   return (
-    <div className="flex flex-col items-center gap-8 relative z-10 max-w-4xl">
-      <div className="text-center space-y-6">
-        <div className="inline-block px-4 py-2 bg-purple-500/20 border border-purple-400/30 rounded-full mb-2">
-          <span className="text-purple-300 text-sm font-semibold">
-            Powered by EIP-7702
-          </span>
-        </div>
-        <h1 className="text-6xl font-bold bg-linear-to-r from-purple-400 via-purple-300 to-purple-500 bg-clip-text text-transparent leading-tight">
-          Your Account.
-          <br />
-          Supercharged.
+    <div className="relative z-10 flex min-h-screen w-full flex-col items-center justify-between px-6 py-8">
+      <header className="flex w-full max-w-lg items-center justify-between">
+        <Wordmark />
+        <ThemeToggle />
+      </header>
+
+      <main className="flex w-full max-w-xl flex-col items-center text-center">
+        <span
+          className="ey-breathe mb-8 block size-2 rounded-full bg-accent"
+          style={{ animationDelay: "40ms" }}
+          aria-hidden="true"
+        />
+
+        <h1
+          className="ey-rise font-display text-[2.7rem] leading-[1.08] tracking-[-0.01em] text-ink sm:text-6xl"
+          style={{ animationDelay: "120ms" }}
+        >
+          The savings account that doesn&apos;t know
+          <span className="text-ink-faint"> what a chain is.</span>
         </h1>
-        <p className="text-gray-300 text-xl max-w-2xl mx-auto leading-relaxed">
-          Upgrade your EOA to a{" "}
-          <span className="text-purple-400 font-semibold">
-            Universal Account
-          </span>{" "}
-          without deploying contracts or forcing your users to migrate assets.
-        </p>
-      </div>
 
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl">
-        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10 text-center">
-          <div className="text-purple-300 font-semibold mb-1">Same Address</div>
-          <div className="text-sm text-gray-400">
-            Your existing EOA IS your Universal Account.
-          </div>
-        </div>
-        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10 text-center">
-          <div className="text-purple-300 font-semibold mb-1">
-            Zero Transfers
-          </div>
-          <div className="text-sm text-gray-400">
-            No asset migration required.
-          </div>
-        </div>
-        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10 text-center">
-          <div className="text-purple-300 font-semibold mb-1">
-            Chain Abstraction
-          </div>
-          <div className="text-sm text-gray-400">
-            Swap across 15+ chains instantly.
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 p-8 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl w-full max-w-md">
-        <div className="flex flex-col items-center gap-6">
-          <div className="text-center space-y-2">
-            <p className="text-white font-bold text-sm uppercase tracking-wider">
-              Experience the Future
-            </p>
-          </div>
-
+        <div
+          className="ey-rise mt-10 flex flex-col items-center gap-3"
+          style={{ animationDelay: "260ms" }}
+        >
           <button
             onClick={onLogin}
             disabled={!ready || authenticated}
-            className="w-full bg-linear-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 disabled:from-gray-700 disabled:to-gray-600 disabled:text-gray-500 text-white font-semibold py-4 px-10 rounded-xl transition-all duration-200 shadow-lg hover:shadow-purple-500/50 disabled:shadow-none"
+            className="group relative inline-flex h-14 items-center justify-center rounded-full bg-accent px-10 font-medium text-accent-ink transition-[transform,filter] duration-200 hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
           >
-            {ready ? "Get Started" : "Loading..."}
+            {ready ? "Log in" : "Loading…"}
           </button>
+          <p className="text-sm text-ink-faint">
+            Email or Google. Your money stays one number.
+          </p>
         </div>
-      </div>
+      </main>
 
-      <div className="mt-6 flex gap-6 text-center text-sm">
-        <div className="flex items-center gap-2 text-gray-400">
-          <span className="text-purple-400 font-bold">15+</span>
-          <span>Chains</span>
-        </div>
-        <div className="flex items-center gap-2 text-gray-400">
-          <span className="text-purple-400 font-bold">EVM + Solana</span>
-          <span>Support</span>
-        </div>
-        <div className="flex items-center gap-2 text-gray-400">
-          <span className="text-purple-400 font-bold">Unified</span>
-          <span>Balance</span>
-        </div>
-      </div>
+      <footer className="text-xs tracking-wide text-ink-faint">
+        Earns everywhere at once · Withdraw anytime
+      </footer>
     </div>
   );
 }
