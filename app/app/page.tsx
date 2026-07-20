@@ -64,9 +64,13 @@ export default function Home() {
 
   const walletAddress =
     wallets?.find((w) => w.walletClientType === "privy")?.address || "";
-  // The Universal Account's EVM address is the on-chain holder of the vault
-  // position on Arbitrum; fall back to the embedded EOA if not yet resolved.
-  const owner = smartAccountAddresses?.evmUaAddress || walletAddress;
+  // Under EIP-7702 the embedded wallet IS the executor of every vault call (it
+  // signs the authorization + root hash), so it must also be `owner`: ERC-4626
+  // `redeem(shares, receiver, owner)` requires `msg.sender == owner`. Using
+  // `evmUaAddress` here would let deposits succeed while withdrawals revert.
+  // `smartAccountAddresses` is retained for display/diagnostics only — never
+  // for a vault call.
+  const owner = walletAddress;
 
   // 1. Ensure embedded wallet exists after login
   useEffect(() => {
@@ -133,6 +137,19 @@ export default function Home() {
       }
     })();
   }, [universalAccount, wallets]);
+
+  // Diagnostic: owner is always walletAddress (see above), but a live
+  // divergence from the Universal Account's EVM address would mean 7702
+  // execution and vault ownership have split — worth flagging loudly.
+  useEffect(() => {
+    const evmUaAddress = smartAccountAddresses?.evmUaAddress;
+    if (evmUaAddress && walletAddress && evmUaAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      console.warn("owner divergence: evmUaAddress differs from walletAddress", {
+        evmUaAddress,
+        walletAddress,
+      });
+    }
+  }, [smartAccountAddresses, walletAddress]);
 
   // Refresh the unified balance
   const fetchBalance = useCallback(async () => {
@@ -277,7 +294,10 @@ export default function Home() {
   }
 
   const totalUsd = balance?.totalAmountInUSD ?? 0;
-  const fullyIdle = position ? position.fullyIdle : true;
+  // Fail closed pre-first-read: until `position` resolves we don't know the
+  // vault is idle, so Save/Withdraw stay disabled rather than briefly open.
+  const fullyIdle = position ? position.fullyIdle : false;
+  const checkingStatus = position === null;
 
   return (
     <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-lg flex-col px-5 pb-16 pt-6">
@@ -290,7 +310,7 @@ export default function Home() {
             type="button"
             onClick={logout}
             aria-label="Log out"
-            className="grid size-9 place-items-center rounded-full border border-line text-ink-soft transition-colors hover:text-ink hover:bg-surface-2"
+            className="grid size-9 place-items-center rounded-full border border-line text-ink-soft outline-none transition-colors hover:text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <LogOut className="size-4" />
           </button>
@@ -318,6 +338,7 @@ export default function Home() {
           owner={owner}
           available={totalUsd}
           fullyIdle={fullyIdle}
+          checkingStatus={checkingStatus}
           busy={isSending}
           onSend={send}
         />
@@ -358,7 +379,7 @@ function AccountButton({ address }: { address: string }) {
     <button
       type="button"
       onClick={copy}
-      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line px-3 font-mono text-xs text-ink-soft transition-colors hover:text-ink hover:bg-surface-2"
+      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line px-3 font-mono text-xs text-ink-soft outline-none transition-colors hover:text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {copied ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
       {truncateAddress(address)}

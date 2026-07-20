@@ -39,7 +39,10 @@ export function PositionCard({
   const animatedValue = useCountUp(value);
   const { dollars, cents } = splitUsd(animatedValue);
   const hasSavings = !!position && position.shares > 0n;
-  const fullyIdle = position?.fullyIdle ?? true;
+  // Fail closed pre-first-read (see SaveCard); unreachable today since
+  // `hasSavings` already requires a resolved `position`, but kept symmetric.
+  const fullyIdle = position?.fullyIdle ?? false;
+  const checkingStatus = position === null;
   const fee = tx ? readFeePreview(tx) : null;
 
   const openWithdraw = async () => {
@@ -108,13 +111,13 @@ export function PositionCard({
       {hasSavings && (
         <div className="mt-5">
           {!fullyIdle ? (
-            <OptimizingNotice action="withdraw" />
+            <OptimizingNotice action="withdraw" checking={checkingStatus} />
           ) : mode === "idle" ? (
             <button
               type="button"
               onClick={openWithdraw}
               disabled={busy}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line px-5 text-sm font-medium text-ink transition-colors hover:bg-surface-2 disabled:opacity-50"
+              className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line px-5 text-sm font-medium text-ink outline-none transition-colors hover:bg-surface-2 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Withdraw
               <ArrowUpRight className="size-4" />
@@ -141,7 +144,7 @@ export function PositionCard({
                   type="button"
                   onClick={confirmWithdraw}
                   disabled={busy || previewing || !tx}
-                  className="h-11 flex-[1.4] rounded-full bg-accent text-sm font-medium text-accent-ink transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:opacity-50"
+                  className="h-11 flex-[1.4] rounded-full bg-accent text-sm font-medium text-accent-ink outline-none transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   {busy ? "Withdrawing…" : "Confirm withdrawal"}
                 </button>

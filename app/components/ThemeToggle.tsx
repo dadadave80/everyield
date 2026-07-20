@@ -37,7 +37,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Switch to light" : "Switch to dark"}
-      className="grid size-9 place-items-center rounded-full border border-line text-ink-soft transition-colors hover:text-ink hover:bg-surface-2"
+      className="grid size-9 place-items-center rounded-full border border-line text-ink-soft outline-none transition-colors hover:text-ink hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {/* Render nothing meaningful until mounted to avoid a hydration mismatch. */}
       {theme === null ? (

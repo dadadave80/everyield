@@ -13,13 +13,22 @@ interface SaveCardProps {
   owner: string;
   available: number;
   fullyIdle: boolean;
+  checkingStatus: boolean;
   busy: boolean;
   onSend: (args: SendArgs) => Promise<void>;
 }
 
 const QUICK = [25, 100, 500];
 
-export function SaveCard({ ua, owner, available, fullyIdle, busy, onSend }: SaveCardProps) {
+export function SaveCard({
+  ua,
+  owner,
+  available,
+  fullyIdle,
+  checkingStatus,
+  busy,
+  onSend,
+}: SaveCardProps) {
   const [amount, setAmount] = useState("");
   const [tx, setTx] = useState<ITransaction | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -92,6 +101,7 @@ export function SaveCard({ ua, owner, available, fullyIdle, busy, onSend }: Save
           <input
             inputMode="decimal"
             placeholder="0"
+            aria-label="Amount to add to savings"
             value={amount}
             disabled={!fullyIdle || busy}
             onChange={(e) => {
@@ -131,7 +141,7 @@ export function SaveCard({ ua, owner, available, fullyIdle, busy, onSend }: Save
 
       {!fullyIdle ? (
         <div className="mt-4">
-          <OptimizingNotice action="save" />
+          <OptimizingNotice action="save" checking={checkingStatus} />
         </div>
       ) : (
         <div className="mt-4 space-y-3">
@@ -146,7 +156,7 @@ export function SaveCard({ ua, owner, available, fullyIdle, busy, onSend }: Save
             type="button"
             onClick={save}
             disabled={!tx || busy || settledPreview || overBalance}
-            className="h-13 w-full rounded-full bg-accent py-4 text-[15px] font-medium text-accent-ink transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:opacity-50"
+            className="h-13 w-full rounded-full bg-accent py-4 text-[15px] font-medium text-accent-ink outline-none transition-[filter,transform] hover:brightness-105 active:scale-[0.99] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {busy
               ? "Saving…"
