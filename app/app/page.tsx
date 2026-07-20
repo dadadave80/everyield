@@ -111,7 +111,10 @@ export default function Home() {
         version: process.env.UNIVERSAL_ACCOUNT_VERSION || UNIVERSAL_ACCOUNT_VERSION,
         ownerAddress: ownerAddr,
       },
-      tradeConfig: { slippageBps: 100, universalGas: true },
+      // universalGas only ever appended PARTI to the fee-token candidates; gas
+      // abstraction from the unified balance is (and always was) the default.
+      // Our balance is USDC/ETH, so dropping it loses nothing.
+      tradeConfig: { slippageBps: 100 },
     });
 
     setUniversalAccount(ua);

@@ -21,18 +21,25 @@ export const copyToClipboard = async (value?: string) => {
 // Chain-id → human name. This is the ONLY surface where chains are ever named —
 // used inside ChainBreakdown ("where your money physically lives"). The primary
 // flow never speaks of a chain.
+//
+// SDK 2.x's CHAIN_ID enum was trimmed to the six chains a v2 Universal Account
+// actually routes (Solana, Ethereum, BSC, Base, X Layer, Arbitrum). A unified
+// balance can still hold dust on chains outside that set, so the now-missing
+// members are kept here as numeric literals (their stable, unchanging chain
+// ids) purely so a balance on one of them still renders a name instead of a
+// raw "Chain <id>" fallback.
 const chainIdToName: Record<number, string> = {
   [CHAIN_ID.ETHEREUM_MAINNET]: "Ethereum",
-  [CHAIN_ID.OPTIMISM_MAINNET]: "Optimism",
+  10: "Optimism", // CHAIN_ID.OPTIMISM_MAINNET, removed from the v2 SDK enum
   [CHAIN_ID.ARBITRUM_MAINNET_ONE]: "Arbitrum",
   [CHAIN_ID.BASE_MAINNET]: "Base",
   [CHAIN_ID.BSC_MAINNET]: "BNB Chain",
-  [CHAIN_ID.BERACHAIN_MAINNET]: "Berachain",
-  [CHAIN_ID.SONIC_MAINNET]: "Sonic",
-  [CHAIN_ID.POLYGON_MAINNET]: "Polygon",
+  80094: "Berachain", // CHAIN_ID.BERACHAIN_MAINNET, removed from the v2 SDK enum
+  146: "Sonic", // CHAIN_ID.SONIC_MAINNET, removed from the v2 SDK enum
+  137: "Polygon", // CHAIN_ID.POLYGON_MAINNET, removed from the v2 SDK enum
   [CHAIN_ID.XLAYER_MAINNET]: "X Layer",
   [CHAIN_ID.SOLANA_MAINNET]: "Solana",
-  [CHAIN_ID.AVALANCHE_MAINNET]: "Avalanche",
+  43114: "Avalanche", // CHAIN_ID.AVALANCHE_MAINNET, removed from the v2 SDK enum
 };
 
 export const getChainName = (chainId: number): string =>

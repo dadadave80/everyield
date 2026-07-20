@@ -41,9 +41,9 @@ export async function createDepositTx(ua: UniversalAccount, amountUsdc: string, 
 export async function createWithdrawTx(ua: UniversalAccount, shares: bigint, owner: string) {
   return ua.createUniversalTransaction({
     chainId: CHAIN_ID.ARBITRUM_MAINNET_ONE,
-    // No inbound asset needed to redeem; gas comes from the unified balance (universalGas).
-    // 1.1.1's IExpectToken[] type permits an empty array (no minimum-length tuple), so this
-    // is left as [] per the brief. If a live run ever rejects it at runtime, fall back to
+    // No inbound asset needed to redeem; gas comes from the unified balance by
+    // default. IExpectToken[] permits an empty array (no minimum-length tuple), so
+    // this is left as []. If a live run ever rejects it at runtime, fall back to
     // the documented dust pattern: [{ type: SUPPORTED_TOKEN_TYPE.ETH, amount: "0.0000001" }]
     expectTokens: [],
     transactions: [{ to: VAULT, data: vaultAbi.encodeFunctionData("redeem", [shares, owner, owner]) }],

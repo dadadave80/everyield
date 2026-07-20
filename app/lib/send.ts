@@ -1,4 +1,5 @@
 import type { ITransaction, UniversalAccount } from "@particle-network/universal-account-sdk";
+import { formatUnits } from "ethers";
 import { handleEIP7702Authorizations } from "@/lib/eip7702";
 
 export type SignMessageFn = (
@@ -86,6 +87,13 @@ export async function runSend({
   return sendResult.transactionId || "";
 }
 
+// SDK 2.x reports fee totals as 1e18-scaled hex strings (e.g. "0x6a17d8fa8c03c0"
+// == $0.0298), not plain decimal strings — decode both forms.
+const usd = (v?: string | null): number => {
+  if (!v) return 0;
+  return v.startsWith("0x") ? Number(formatUnits(BigInt(v), 18)) : Number(v) || 0;
+};
+
 /** Honest cost preview pulled straight from the transaction's fee quote. */
 export function readFeePreview(transaction: ITransaction): {
   total: number;
@@ -94,9 +102,9 @@ export function readFeePreview(transaction: ITransaction): {
 } | null {
   const totals = transaction.feeQuotes?.[0]?.fees?.totals;
   if (!totals) return null;
-  const routing = Number(totals.feeTokenAmountInUSD) || 0;
-  const gas = Number(totals.gasFeeTokenAmountInUSD) || 0;
-  // Brief specifies feeTokenAmountInUSD (+ gasFeeTokenAmountInUSD); surfaced as one
-  // honest total with a routing/gas split. Live values calibrated in Task 9.
-  return { total: routing + gas, routing, gas };
+  // feeTokenAmountInUSD is the ALL-IN fee; gasFeeTokenAmountInUSD is the gas
+  // portion already included within it — so routing = total - gas, never total + gas.
+  const total = usd(totals.feeTokenAmountInUSD);
+  const gas = usd(totals.gasFeeTokenAmountInUSD);
+  return { total, routing: Math.max(total - gas, 0), gas };
 }
