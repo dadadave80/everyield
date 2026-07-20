@@ -1,6 +1,6 @@
-# Everyield
-
-**The savings account that doesn't know what a chain is.**
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Everyield — the savings account that doesn't know what a chain is" width="100%">
+</p>
 
 Log in with an email, and your ordinary wallet becomes a smart account that treats every chain as one
 balance. Tap **Save**, and your USDC lands in an ERC-4626 vault on Arbitrum One earning live Aave V3 yield —

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Everyield">
+  <rect x="0" y="0" width="32" height="32" rx="7" fill="#0d1712"/>
+  <g transform="translate(0.6 0.6) scale(1.26)">
+    <path d="M12 21.5V8" fill="none" stroke="#4ec491" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M12 12C12 8.5 9 6 5.5 6C5.5 9.5 8.5 12 12 12Z" fill="#3fae7f"/>
+    <path d="M12 10.5C12 6.5 15.4 3.5 19 3.5C19 7.5 15.6 10.5 12 10.5Z" fill="#64d8a4"/>
+  </g>
+</svg>
