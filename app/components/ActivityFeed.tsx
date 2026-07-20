@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDownToLine, ArrowUpRight, ExternalLink } from "lucide-react";
-import type { ActivityStage, LocalActivity } from "@/lib/send";
+import { usdAmount, type ActivityStage, type LocalActivity } from "@/lib/send";
 import { formatRelativeTime } from "@/lib/utils";
 import { formatUsd } from "@/lib/ui";
 
@@ -176,7 +176,10 @@ function LocalRow({ entry }: { entry: LocalActivity }) {
 }
 
 function HistoryRow({ tx }: { tx: HistoryTx }) {
-  const usd = Math.abs(parseFloat(tx.change.amountInUSD));
+  // getTransactions() is typed `any` by the SDK, so amountInUSD's runtime shape
+  // (plain decimal vs. 1e18-scaled hex, per readFeePreview) isn't guaranteed —
+  // usdAmount handles both.
+  const usd = Math.abs(usdAmount(tx.change.amountInUSD));
   const inbound = !tx.change.amount.startsWith("-");
   const status =
     tx.status === 7

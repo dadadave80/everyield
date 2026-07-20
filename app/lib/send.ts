@@ -88,10 +88,15 @@ export async function runSend({
 }
 
 // SDK 2.x reports fee totals as 1e18-scaled hex strings (e.g. "0x6a17d8fa8c03c0"
-// == $0.0298), not plain decimal strings — decode both forms.
-const usd = (v?: string | null): number => {
+// == $0.0298), not plain decimal strings — decode both forms. Validate the hex
+// shape before parsing: BigInt() throws SyntaxError on "0x" or "0xzz", and a
+// case-sensitive "0x" check lets "0X…" fall through to Number(), which parses
+// hex natively and reproduces the misrender this decode exists to prevent.
+export const usdAmount = (v?: string | null): number => {
   if (!v) return 0;
-  return v.startsWith("0x") ? Number(formatUnits(BigInt(v), 18)) : Number(v) || 0;
+  if (/^0x[0-9a-f]+$/i.test(v)) return Number(formatUnits(BigInt(v), 18));
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 };
 
 /** Honest cost preview pulled straight from the transaction's fee quote. */
@@ -104,7 +109,13 @@ export function readFeePreview(transaction: ITransaction): {
   if (!totals) return null;
   // feeTokenAmountInUSD is the ALL-IN fee; gasFeeTokenAmountInUSD is the gas
   // portion already included within it — so routing = total - gas, never total + gas.
-  const total = usd(totals.feeTokenAmountInUSD);
-  const gas = usd(totals.gasFeeTokenAmountInUSD);
+  // This "gas is a subset of total" reading is inferred from a live sample, not
+  // documented by the SDK (it passes these fields through untouched); warn if a
+  // live quote ever contradicts it so the clamp below doesn't silently hide it.
+  const total = usdAmount(totals.feeTokenAmountInUSD);
+  const gas = usdAmount(totals.gasFeeTokenAmountInUSD);
+  if (gas > total) {
+    console.warn(`readFeePreview: gas (${gas}) exceeds total (${total}) — fees may be additive, not inclusive`);
+  }
   return { total, routing: Math.max(total - gas, 0), gas };
 }

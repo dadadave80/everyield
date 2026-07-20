@@ -1,4 +1,4 @@
-// @particle-network/universal-account-sdk@1.1.1 ships correct `main`/`module`/`types`
+// @particle-network/universal-account-sdk ships correct `main`/`module`/`types`
 // fields, but its `exports` map only declares `import`/`require` conditions (no `types`
 // condition). Under `moduleResolution: "bundler"`, TypeScript resolves package types via
 // the `exports` map when present, so a bare-specifier import of the package resolves to
