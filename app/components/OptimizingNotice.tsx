@@ -51,15 +51,20 @@ export function OptimizingNotice({
           </>
         )}
       </p>
-      {!checking && (
-        <button
-          type="button"
-          onClick={copy}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 font-mono text-xs text-ink-soft transition-colors hover:text-ink"
-        >
-          {copied ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
-          make exit
-        </button>
+      {!checking && process.env.NODE_ENV === "development" && (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={copy}
+            className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 font-mono text-xs text-ink-soft transition-colors hover:text-ink"
+          >
+            {copied ? <Check className="size-3.5 text-accent" /> : <Copy className="size-3.5" />}
+            make exit
+          </button>
+          <span className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
+            operator
+          </span>
+        </div>
       )}
     </div>
   );

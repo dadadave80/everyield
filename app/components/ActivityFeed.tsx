@@ -50,6 +50,29 @@ function universalxLink(id: string) {
   return `https://universalx.app/activity/details?id=${id}`;
 }
 
+// getTransactions() is typed `any` by the SDK, so a row's `tag` can be an
+// unrecognized/placeholder value (observed: "Unknown") when the backend's
+// tx-type doesn't match the mapper. Never surface that string — fall back to
+// the direction we can already derive from the signed amount, and only drop
+// to "Transfer" when even that signal isn't available.
+function historyLabel(
+  tag: string | undefined | null,
+  direction: "inbound" | "outbound" | null,
+): { text: string; recognized: boolean } {
+  const trimmed = tag?.trim();
+  if (trimmed && trimmed.toLowerCase() !== "unknown") {
+    return { text: trimmed, recognized: true };
+  }
+  if (direction === "inbound") return { text: "Added to savings", recognized: false };
+  if (direction === "outbound") return { text: "Withdrew", recognized: false };
+  return { text: "Transfer", recognized: false };
+}
+
+function directionOf(amount: unknown): "inbound" | "outbound" | null {
+  if (typeof amount !== "string" || amount.trim() === "") return null;
+  return amount.trim().startsWith("-") ? "outbound" : "inbound";
+}
+
 export function ActivityFeed({ local, history, loading }: ActivityFeedProps) {
   const localIds = new Set(local.map((l) => l.transactionId).filter(Boolean));
   const filteredHistory = history.filter((h) => !localIds.has(h.transactionId));
@@ -180,7 +203,9 @@ function HistoryRow({ tx }: { tx: HistoryTx }) {
   // (plain decimal vs. 1e18-scaled hex, per readFeePreview) isn't guaranteed —
   // usdAmount handles both.
   const usd = Math.abs(usdAmount(tx.change.amountInUSD));
-  const inbound = !tx.change.amount.startsWith("-");
+  const direction = directionOf(tx.change?.amount);
+  const inbound = direction !== "outbound";
+  const label = historyLabel(tx.tag, direction);
   const status =
     tx.status === 7
       ? { label: "Confirmed", cls: "text-positive" }
@@ -204,7 +229,9 @@ function HistoryRow({ tx }: { tx: HistoryTx }) {
           )}
         </span>
         <div>
-          <p className="text-sm font-medium capitalize text-ink">{tx.tag || "Activity"}</p>
+          <p className={`text-sm font-medium text-ink ${label.recognized ? "capitalize" : ""}`}>
+            {label.text}
+          </p>
           <p className="text-xs text-ink-faint">{formatRelativeTime(tx.createdAt)}</p>
         </div>
       </div>
