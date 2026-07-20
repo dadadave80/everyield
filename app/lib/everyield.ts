@@ -65,7 +65,9 @@ export async function readPosition(owner: string) {
   // Full-NAV pricing (see PRICING RULE above); fullyIdle gates deposit/withdraw availability.
   const usdcValue: bigint = totalSupply === 0n ? 0n : (shares * totalAssets) / totalSupply;
   const fullyIdle = idleAssets >= totalAssets;
-  return { shares, usdcValue, idleAssets, fullyIdle, display: formatUnits(usdcValue, 6) };
+  // totalAssets/totalSupply are surfaced so a partial-withdraw amount can be
+  // converted USD→shares (amount6 * totalSupply / totalAssets) without re-reading.
+  return { shares, usdcValue, idleAssets, fullyIdle, totalAssets, totalSupply, display: formatUnits(usdcValue, 6) };
 }
 
 export async function readApy(): Promise<number> {

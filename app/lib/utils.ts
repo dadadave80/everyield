@@ -19,7 +19,7 @@ export const copyToClipboard = async (value?: string) => {
 };
 
 // Chain-id → human name. This is the ONLY surface where chains are ever named —
-// used inside ChainBreakdown ("where your money physically lives"). The primary
+// used inside ChainBreakdown ("where your money lives"). The primary
 // flow never speaks of a chain.
 //
 // SDK 2.x's CHAIN_ID enum was trimmed to the six chains a v2 Universal Account

@@ -82,24 +82,30 @@ export function SaveCard({
   const settledPreview = previewing || debounced !== amount;
 
   const save = async () => {
-    if (!tx || !validNumber || !ua || !owner) return;
+    if (!validNumber || overBalance || !ua || !owner) return;
     setError(null);
     setRebuilding(true);
     try {
-      // Particle's server-side pending-transaction record has a short TTL, so
-      // the stored preview is display-only — build a fresh transaction right
-      // before signing. If this click is itself the re-confirm after a
-      // fee-drift warning, sign that already-fresh transaction as-is instead
-      // of rebuilding (and re-warning) again.
-      let fresh = confirmTx;
-      if (!fresh) {
-        fresh = (await createDepositTx(ua, amount, owner)) as ITransaction;
-        const freshFee = readFeePreview(fresh);
-        if (fee && freshFee && feeDrifted(fee.total, freshFee.total)) {
-          setTx(fresh);
-          setConfirmTx(fresh);
-          return;
-        }
+      // Rebuild fresh at every click — Particle's server-side pending-tx record
+      // has a short TTL, so the stored preview is display-only and the cached
+      // confirmTx is consent-state only, never itself signed. The re-confirm
+      // after a fee-drift warning rebuilds again here rather than signing cache.
+      const fresh = (await createDepositTx(ua, amount, owner)) as ITransaction;
+      const freshFee = readFeePreview(fresh);
+      // Fail closed: never sign with an unknown cost — surface the same
+      // couldn't-check-cost state the debounced preview uses.
+      if (!freshFee) {
+        setTx(null);
+        setConfirmTx(null);
+        setError("Couldn't check the cost just now. Adjust the amount to retry.");
+        return;
+      }
+      // First click (no prior consent) that drifts → surface the new cost and
+      // require a second click; the second click still signs a fresh rebuild.
+      if (!confirmTx && fee && feeDrifted(fee.total, freshFee.total)) {
+        setTx(fresh);
+        setConfirmTx(fresh);
+        return;
       }
       setConfirmTx(null);
       await onSend({

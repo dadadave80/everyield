@@ -16,6 +16,7 @@ import {
   UNIVERSAL_ACCOUNT_VERSION,
 } from "@particle-network/universal-account-sdk";
 import { Check, Copy, LogOut } from "lucide-react";
+import { formatUnits } from "ethers";
 
 import { LandingHero } from "@/components/LandingHero";
 import { Wordmark } from "@/components/Wordmark";
@@ -303,7 +304,13 @@ export default function Home() {
     );
   }
 
-  const totalUsd = balance?.totalAmountInUSD ?? 0;
+  // "Everything you own, one number": the unified (spendable) balance PLUS the
+  // on-chain savings position. `uaUsd` alone is what's available to deposit —
+  // savings can't be re-deposited — so SaveCard keeps receiving `uaUsd`, while
+  // the hero and money-map read the grand total.
+  const uaUsd = balance?.totalAmountInUSD ?? 0;
+  const savingsUsd = position ? Number(formatUnits(position.usdcValue, 6)) : 0;
+  const totalUsd = uaUsd + savingsUsd;
   // Fail closed pre-first-read: until `position` resolves we don't know the
   // vault is idle, so Save/Withdraw stay disabled rather than briefly open.
   const fullyIdle = position ? position.fullyIdle : false;
@@ -330,7 +337,7 @@ export default function Home() {
       <HeroBalance amount={totalUsd} loading={isLoadingBalance && !balance} />
 
       <div className="mt-5">
-        <ChainBreakdown assets={balance?.assets} total={totalUsd} />
+        <ChainBreakdown assets={balance?.assets} total={totalUsd} savings={savingsUsd} />
       </div>
 
       <div className="mt-8 flex flex-col gap-5">
@@ -346,7 +353,7 @@ export default function Home() {
         <SaveCard
           ua={universalAccount}
           owner={owner}
-          available={totalUsd}
+          available={uaUsd}
           fullyIdle={fullyIdle}
           checkingStatus={checkingStatus}
           busy={isSending}

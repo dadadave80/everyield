@@ -9,14 +9,18 @@ import { formatUsd } from "@/lib/ui";
 interface ChainBreakdownProps {
   assets: IAsset[] | undefined;
   total: number;
+  // Value (USD) of the on-chain savings position, so "where your money lives"
+  // shows the whole picture, not just the spendable balance. 0 = not saving.
+  savings: number;
 }
 
 interface Row {
   name: string;
   usd: number;
+  secondary?: string;
 }
 
-export function ChainBreakdown({ assets, total }: ChainBreakdownProps) {
+export function ChainBreakdown({ assets, total, savings }: ChainBreakdownProps) {
   const [open, setOpen] = useState(false);
 
   const rows = useMemo<Row[]>(() => {
@@ -28,10 +32,12 @@ export function ChainBreakdown({ assets, total }: ChainBreakdownProps) {
         byChain.set(name, (byChain.get(name) ?? 0) + agg.amountInUSD);
       }
     }
-    return [...byChain.entries()]
-      .map(([name, usd]) => ({ name, usd }))
-      .sort((a, b) => b.usd - a.usd);
-  }, [assets]);
+    const list: Row[] = [...byChain.entries()].map(([name, usd]) => ({ name, usd }));
+    // Savings is a first-class "place" money lives — the vault runs on Arbitrum,
+    // surfaced as subtle secondary text (chain names are allowed in this disclosure).
+    if (savings >= 0.01) list.push({ name: "Everyield savings", usd: savings, secondary: "Arbitrum" });
+    return list.sort((a, b) => b.usd - a.usd);
+  }, [assets, savings]);
 
   const count = rows.length;
 
@@ -57,7 +63,7 @@ export function ChainBreakdown({ assets, total }: ChainBreakdownProps) {
       {open && (
         <div className="ey-rise mt-3 overflow-hidden rounded-2xl border border-line bg-surface/60 p-1">
           <p className="px-4 pt-3 pb-2 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
-            Where your money physically lives
+            Where your money lives
           </p>
           {count === 0 ? (
             <p className="px-4 pb-4 text-sm text-ink-soft">
@@ -72,8 +78,11 @@ export function ChainBreakdown({ assets, total }: ChainBreakdownProps) {
                     key={row.name}
                     className="flex items-center gap-3 px-4 py-2.5"
                   >
-                    <span className="w-28 shrink-0 truncate text-sm text-ink">
-                      {row.name}
+                    <span className="flex w-28 shrink-0 flex-col">
+                      <span className="truncate text-sm text-ink">{row.name}</span>
+                      {row.secondary && (
+                        <span className="truncate text-[11px] text-ink-faint">{row.secondary}</span>
+                      )}
                     </span>
                     <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
                       <span

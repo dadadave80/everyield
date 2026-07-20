@@ -4,6 +4,7 @@ import { ArrowDownToLine, ArrowUpRight, ExternalLink } from "lucide-react";
 import { usdAmount, type ActivityStage, type LocalActivity } from "@/lib/send";
 import { formatRelativeTime } from "@/lib/utils";
 import { formatUsd } from "@/lib/ui";
+import { VAULT } from "@/lib/addresses";
 
 export interface HistoryTx {
   transactionId: string;
@@ -50,21 +51,52 @@ function universalxLink(id: string) {
   return `https://universalx.app/activity/details?id=${id}`;
 }
 
+// Does this history row touch the savings vault? getTransactions() passes the
+// backend JSON through untouched (SDK-typed `any`), so a target/contract address
+// — if the record carries one — could sit under any of a few plausible keys.
+// The fields the app is *known* to receive are {transactionId, tag, createdAt,
+// status, change:{amount, amountInUSD}}, none of which is guaranteed to be an
+// address; so this is a best-effort scan across likely keys, case-insensitive.
+// A hit is a strong, app-specific signal that the row is a deposit/redeem.
+function touchesVault(tx: HistoryTx): boolean {
+  const rec = tx as unknown as Record<string, unknown>;
+  const change = (rec.change ?? {}) as Record<string, unknown>;
+  const token = (change.token ?? {}) as Record<string, unknown>;
+  const candidates: unknown[] = [
+    rec.receiver, rec.to, rec.toAddress, rec.target, rec.contract, rec.contractAddress,
+    change.to, change.toAddress, change.contractAddress, token.address,
+  ];
+  const vault = VAULT.toLowerCase();
+  return candidates.some((v) => typeof v === "string" && v.toLowerCase() === vault);
+}
+
 // getTransactions() is typed `any` by the SDK, so a row's `tag` can be an
 // unrecognized/placeholder value (observed: "Unknown") when the backend's
-// tx-type doesn't match the mapper. Never surface that string — fall back to
-// the direction we can already derive from the signed amount, and only drop
-// to "Transfer" when even that signal isn't available.
+// tx-type doesn't match the mapper. Label priority:
+//   1. Vault match — authoritative. From the unified account's view, money
+//      LEAVING (outbound) went INTO the vault ("Added to savings"); money
+//      ARRIVING (inbound) came back OUT ("Withdrew").
+//   2. A recognized backend tag (never the "Unknown" placeholder).
+//   3. Directional fallback, FLIPPED to match live evidence — a real vault
+//      deposit is outbound from the UA yet must read "Added to savings" (the
+//      earlier inbound=save mapping rendered it inverted as "Withdrew").
+//   4. "Transfer" only when no direction signal exists at all.
 function historyLabel(
   tag: string | undefined | null,
   direction: "inbound" | "outbound" | null,
+  vaultMatch: boolean,
 ): { text: string; recognized: boolean } {
+  if (vaultMatch && direction) {
+    return direction === "outbound"
+      ? { text: "Added to savings", recognized: false }
+      : { text: "Withdrew", recognized: false };
+  }
   const trimmed = tag?.trim();
   if (trimmed && trimmed.toLowerCase() !== "unknown") {
     return { text: trimmed, recognized: true };
   }
-  if (direction === "inbound") return { text: "Added to savings", recognized: false };
-  if (direction === "outbound") return { text: "Withdrew", recognized: false };
+  if (direction === "outbound") return { text: "Added to savings", recognized: false };
+  if (direction === "inbound") return { text: "Withdrew", recognized: false };
   return { text: "Transfer", recognized: false };
 }
 
@@ -205,7 +237,7 @@ function HistoryRow({ tx }: { tx: HistoryTx }) {
   const usd = Math.abs(usdAmount(tx.change.amountInUSD));
   const direction = directionOf(tx.change?.amount);
   const inbound = direction !== "outbound";
-  const label = historyLabel(tx.tag, direction);
+  const label = historyLabel(tx.tag, direction, touchesVault(tx));
   const status =
     tx.status === 7
       ? { label: "Confirmed", cls: "text-positive" }
