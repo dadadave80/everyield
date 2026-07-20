@@ -72,7 +72,7 @@ the payoff, not the pitch. Narration lines are in quotes; screen actions are in 
 **Show the split land (or cut back to the app).**
 
 ### 8 — Earning (2:05–2:20)
-**Back in the app, "Your savings" shows the position with the `ApyBadge` reading e.g. "4.xx% a year".**
+**Back in the app, "Your savings" shows the position with the `ApyBadge` reading ~"2.9% a year" (live Aave USDC rate — glance at it pre-take and match your narration to what it says).**
 > "And now it's earning — live Aave V3 yield, priced against the vault's full value, updating around the clock."
 
 ### 9 — Partial withdraw (2:20–2:40)
@@ -92,5 +92,5 @@ the payoff, not the pitch. Narration lines are in quotes; screen actions are in 
 - Keep the fee line on screen a beat longer than feels natural — the "quoted up front, charged as quoted" claim
   is a core differentiator.
 - The operator/terminal shot (step 7) should read as *infrastructure*, not a user step — label it "operator" on
-  screen if possible. The app itself surfaces this: the optimizing notice shows a `make exit` operator chip.
+  screen if possible. (On the production app users never see operator tooling; the `make exit` chip is dev-only.)
 - If total runtime is tight, compress steps 3 and 7 rather than the fee preview (4) or the proof shot (10).
