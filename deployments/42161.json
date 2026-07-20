@@ -1,0 +1,10 @@
+{
+  "chain": 42161,
+  "vault": "0x4aE34A2fA9efD143C0330c306dDF8808eE34815D",
+  "manager": "0xcFf692A6cc69D868Bb1944d9269a233c01643Adc",
+  "adapter": "0x9e104F4Ec391128Ad0cc101D2D1bB5Be6c02Dd02",
+  "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+  "aaveProvider": "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
+  "deployer": "0xdadada4e8038641212262fd94e816d4a57cdc751",
+  "block": 485711716
+}
